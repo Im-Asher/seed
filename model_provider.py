@@ -15,8 +15,8 @@ class BertForNer(BertPreTrainedModel):
         self.loss_type = config.loss_type
         self.init_weights()
     
-    def forward(self, inputs,labels=None):
-        outputs = self.bert(**inputs)
+    def forward(self, feature,labels=None):
+        outputs = self.bert(**feature)
         sequence_output = outputs[0]
         sequence_output = self.dropout(sequence_output)
         logits = self.classifier(sequence_output)
@@ -30,7 +30,7 @@ class BertForNer(BertPreTrainedModel):
             else:
                 loss_fct = CrossEntropyLoss(ignore_index=0)
             # Only keep active parts of the loss
-            attention_mask = inputs.data['attention_mask']
+            attention_mask = feature.data['attention_mask']
             if attention_mask is not None:
                 active_loss = attention_mask.view(-1) == 1
                 active_logits = logits.view(-1, self.num_labels)[active_loss]
