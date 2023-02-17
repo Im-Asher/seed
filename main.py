@@ -1,5 +1,6 @@
 import argparse
 import logging
+import torch
 import torch.cuda
 
 from tqdm import tqdm
@@ -7,6 +8,8 @@ from torch.utils.data import DataLoader
 from data.data_utils import collate_fn, load_data, id2label, label2id
 from model_provider import BertForNer
 from transformers import AutoConfig, AutoTokenizer, AdamW, get_scheduler
+from seqeval.metrics import classification_report
+from seqeval.scheme import IOB2
 
 DATA_DIR = './data/dataset/'
 TRAIN_FILE = DATA_DIR + 'cve-500.jsonl'
@@ -60,8 +63,28 @@ def train(args: argparse.Namespace, train_dataloader, model: BertForNer, tokeniz
                 f'loss value:{n_epoch_total_loss/finish_batch_num:>7f}')
             progress_bar.update(1)
 
-def evaluate():
-    pass
+
+def evaluate(config, model: BertForNer, eval_dataloader: DataLoader):
+    true_labels, true_predictions = [], []
+
+    model.eval()
+
+    logger.info("start evaluate model...")
+
+    with torch.no_grad():
+        progress_bar = tqdm(range(len(eval_dataloader)))
+        for feature, label in eval_dataloader:
+            pred = model(feature)
+            predictions = pred.argmax(dim=-1).cpu().numpy().tolist()
+            labels = label.cpu().numpy().tolist()
+            true_labels += [[config.id2label[int(l)]
+                             for l in label if l != 0] for label in labels]
+            true_predictions += [
+                [config.id2label[int(p)] for (p, l) in zip(prediction, label) if l != -100]
+                for prediction, label in zip(predictions, labels)
+            ]
+            progress_bar.update(1)
+    print(classification_report(true_labels, true_predictions, mode='strict', scheme=IOB2))
 
 
 def predict():
@@ -98,7 +121,7 @@ if __name__ == "__main__":
     parser.add_argument('--num_training_steps', default=8600, type=int,
                         help='training step.')
     parser.add_argument('--loss_type', default='ce', type=str,
-                        help="loss function type ('lsr', 'focal', 'ce')")                        
+                        help="loss function type ('lsr', 'focal', 'ce')")
     # runing mode
     parser.add_argument('--do_train', default=True, action='store_true',
                         help='Whether to run train process')
