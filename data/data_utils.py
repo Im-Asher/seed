@@ -44,6 +44,9 @@ def collate_fn(batch_samples):
             token_start = encoding.char_to_token(start)
             token_end = encoding.char_to_token(end)
             batch_label[idx][token_start] = label2id[f'B-{tag}']
-            batch_label[idx][token_start+1:token_end] = label2id[f'I-{tag}']
+            try:
+                batch_label[idx][token_start+1:token_end] = label2id[f'I-{tag}']
+            except Exception as e:
+                print(idx,sentence)
 
     return batch_inputs, torch.LongTensor(batch_label)

@@ -1,5 +1,5 @@
 from torch import nn
-from transformers import BertPreTrainedModel,AutoTokenize,BertModel
+from transformers import BertPreTrainedModel,BertModel
 from torch.nn import CrossEntropyLoss
 from losses.focal_loss import FocalLoss
 from losses.label_smoothing import LabelSmoothingCrossEntropy

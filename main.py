@@ -3,7 +3,7 @@ import logging
 import torch
 import torch.cuda
 import numpy as np
-import json 
+import json
 
 from tqdm import tqdm
 from torch.utils.data import DataLoader
@@ -36,7 +36,7 @@ def train(args: argparse.Namespace, train_dataloader, model: BertForNer, tokeniz
     logger.info("***** Training Parameters Information *****")
     logger.info("Data size = %d", len(train_dataloader))
     logger.info("Training epochs = %d", args.epoch)
-    logger.info("Learining rate = %f", args.learining_rate)
+    logger.info("Learining rate = %f", args.learning_rate)
     logger.info("Data batch size = %d", args.batch_size)
     logger.info("***** Training Fun *****")
 
@@ -48,7 +48,7 @@ def train(args: argparse.Namespace, train_dataloader, model: BertForNer, tokeniz
         model.train()
 
         n_epoch_total_loss = 0
-        finish_batch_num = (epoch-1) * len(train_dataloader)
+        finish_batch_num = epoch * len(train_dataloader)
 
         for batch, (feature, label) in enumerate(train_dataloader, start=1):
             feature, label = feature.to(args.device), label.to(args.device)
@@ -63,8 +63,9 @@ def train(args: argparse.Namespace, train_dataloader, model: BertForNer, tokeniz
             n_epoch_total_loss += loss.item()
 
             progress_bar.set_description(
-                f'loss value:{n_epoch_total_loss/finish_batch_num:>7f}')
+                f'loss value:{n_epoch_total_loss/(finish_batch_num+batch):>7f}')
             progress_bar.update(1)
+
 
 def evaluate(config, model: BertForNer, eval_dataloader: DataLoader):
     true_labels, true_predictions = [], []
@@ -90,6 +91,7 @@ def evaluate(config, model: BertForNer, eval_dataloader: DataLoader):
     print(classification_report(true_labels,
           true_predictions, mode='strict', scheme=IOB2))
 
+
 def predict(args: argparse.Namespace, model: BertForNer, predict_dataloader: DataLoader, tokenizer: AutoTokenizer):
     logger.info("start predict ...")
     progress_bar = tqdm(range(len(predict_dataloader)))
@@ -102,11 +104,13 @@ def predict(args: argparse.Namespace, model: BertForNer, predict_dataloader: Dat
         inputs = inputs.to(args.device)
         pred = model(inputs)
 
-        probabilities = torch.nn.functional.softmax(pred, dim=-1)[0].cpu().numpy().tolist()
+        probabilities = torch.nn.functional.softmax(
+            pred, dim=-1)[0].cpu().numpy().tolist()
         predictions = pred.argmax(dim=-1)[0].cpu().numpy().tolist()
 
         pred_label = []
-        inputs_with_offsets = tokenizer(example['sentence'], return_offsets_mapping=True)
+        inputs_with_offsets = tokenizer(
+            example['sentence'], return_offsets_mapping=True)
         tokens = inputs_with_offsets.tokens()
         offsets = inputs_with_offsets["offset_mapping"]
 
@@ -115,15 +119,16 @@ def predict(args: argparse.Namespace, model: BertForNer, predict_dataloader: Dat
             pred = predictions[idx]
             label = id2label[pred]
             if label != "O":
-                label = label[2:] # Remove the B- or I-
+                label = label[2:]  # Remove the B- or I-
                 start, end = offsets[idx]
                 all_scores = [probabilities[idx][pred]]
                 # Grab all the tokens labeled with I-label
                 while (
-                    idx + 1 < len(predictions) and 
+                    idx + 1 < len(predictions) and
                     id2label[predictions[idx + 1]] == f"I-{label}"
                 ):
-                    all_scores.append(probabilities[idx + 1][predictions[idx + 1]])
+                    all_scores.append(
+                        probabilities[idx + 1][predictions[idx + 1]])
                     _, end = offsets[idx + 1]
                     idx += 1
 
@@ -141,14 +146,15 @@ def predict(args: argparse.Namespace, model: BertForNer, predict_dataloader: Dat
             idx += 1
         results.append(
             {
-                "sentence": example['sentence'], 
-                "pred_label": pred_label, 
+                "sentence": example['sentence'],
+                "pred_label": pred_label,
                 "true_label": example['labels']
             }
         )
     with open(args.predict_result_dir, 'wt', encoding='utf-8') as f:
         for exapmle_result in results:
             f.write(json.dumps(exapmle_result, ensure_ascii=False) + '\n')
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser('NLP model parameter setting.')
@@ -166,9 +172,8 @@ if __name__ == "__main__":
                         type=str, help='predict file for model predict')
     parser.add_argument('--output_dir', default=OUTPUR_DIR, type=str,
                         help='The output directory where the model trained will be written ')
-    parser.add_argument('--predict_result_dir',default=PREDICT_RESULT_DIR,type=str,
+    parser.add_argument('--predict_result_dir', default=PREDICT_RESULT_DIR, type=str,
                         help='The predict result file path when do predict')
-    
 
     # Optional parameters
     # train parameters
