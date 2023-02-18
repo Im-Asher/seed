@@ -1,11 +1,14 @@
 import argparse
 import logging
+import os
 import torch
 import torch.cuda
 import numpy as np
 import json
+import time
 
 from tqdm import tqdm
+from utils.commom import init_logger, logger
 from torch.utils.data import DataLoader
 from data.data_utils import collate_fn, load_data, id2label, label2id
 from model_provider import BertForNer
@@ -31,18 +34,22 @@ def train(args: argparse.Namespace, train_dataloader, model: BertForNer, tokeniz
     optimizer = AdamW(model.parameters(), lr=args.learning_rate)
     lr_scheduler = get_scheduler('linear', optimizer=optimizer,
                                  num_warmup_steps=0, num_training_steps=args.num_training_steps)
+    global_step = 0
+    tr_loss = 0.0
 
     # Show Training Parameters
     logger.info("***** Training Parameters Information *****")
-    logger.info("Data size = %d", len(train_dataloader))
+    logger.info("Data size = %d", len(train_dataloader)*args.batch_size)
     logger.info("Training epochs = %d", args.epoch)
     logger.info("Learining rate = %f", args.learning_rate)
     logger.info("Data batch size = %d", args.batch_size)
     logger.info("***** Training Fun *****")
 
+    progress_bar = tqdm(range(len(train_dataloader)), ncols=100)
+
     for epoch in range(args.epoch):
         logger.info(f'Epoch {epoch +1}/{args.epoch}\n-------------------')
-        progress_bar = tqdm(range(len(train_dataloader)))
+        progress_bar.reset()
         progress_bar.set_description(f'loss value:{0:>7f}')
 
         model.train()
@@ -54,7 +61,7 @@ def train(args: argparse.Namespace, train_dataloader, model: BertForNer, tokeniz
             feature, label = feature.to(args.device), label.to(args.device)
 
             loss, _ = model(feature, label)
-
+            tr_loss += loss.item()
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
@@ -65,6 +72,28 @@ def train(args: argparse.Namespace, train_dataloader, model: BertForNer, tokeniz
             progress_bar.set_description(
                 f'loss value:{n_epoch_total_loss/(finish_batch_num+batch):>7f}')
             progress_bar.update(1)
+            global_step += 1
+
+            if args.save_step > 0 and global_step % args.save_step == 0:
+                # Save model checkpoint
+                output_dir = os.path.join(
+                    args.output_dir, "checkpoint-{}".format(global_step))
+                if not os.path.exists(output_dir):
+                    os.makedirs(output_dir)
+                model_to_save = (model.module if hasattr(
+                    model, "module") else model)
+                model_to_save.save_pretrained(output_dir)
+                torch.save(args, os.path.join(output_dir, "training_args.bin"))
+                tokenizer.save_vocabulary(output_dir)
+                torch.save(lr_scheduler.state_dict(), os.path.join(
+                    output_dir, "lr_scheduler.pt"))
+        logger.info("\n")
+        logger.info(
+            f"Epoch {epoch+1}/{args.epoch}: loss value:{tr_loss/global_step}")
+    
+    if 'cuda' in str(args.device):
+        torch.cuda.empty_cache()
+    return global_step, tr_loss / global_step
 
 
 def evaluate(config, model: BertForNer, eval_dataloader: DataLoader):
@@ -162,14 +191,18 @@ if __name__ == "__main__":
     # Required parameters
     parser.add_argument('--data_dir', default=DATA_DIR,
                         type=str, help='The input data dir.')
+    parser.add_argument('--task_name', default="SV",
+                        type=str,  help='Execute task name using model')
     parser.add_argument('--check_point', default=CHECK_POINT, type=str,
                         help='The name of pre-traind model name or path in local')
     parser.add_argument('--train_file', default=TRAIN_FILE,
-                        type=str, help='train file for model training')
+                        type=str,  help='Train file for model training')
     parser.add_argument('--evaluate_file', default=EVAL_FILE,
-                        type=str, help='evaluate file for model evaluate')
+                        type=str,  help='Evaluate file for model evaluate')
     parser.add_argument('--predict_file', default=PREDICT_FILE,
-                        type=str, help='predict file for model predict')
+                        type=str,  help='Predict file for model predict')
+    parser.add_argument('--model_type', default="BERT",
+                        type=str,  help="Model type(ONLY BERT!!! NOW)")
     parser.add_argument('--output_dir', default=OUTPUR_DIR, type=str,
                         help='The output directory where the model trained will be written ')
     parser.add_argument('--predict_result_dir', default=PREDICT_RESULT_DIR, type=str,
@@ -186,7 +219,9 @@ if __name__ == "__main__":
     parser.add_argument('--learning_rate', default=2e-5, type=float,
                         help='Default learning rate for model training.')
     parser.add_argument('--num_training_steps', default=8600, type=int,
-                        help='training step.')
+                        help='Training step.')
+    parser.add_argument('--save_step', default=1000, type=int,
+                        help="Save checkpoint every X updates steps")
     parser.add_argument('--loss_type', default='ce', type=str,
                         help="loss function type ('lsr', 'focal', 'ce')")
     # runing mode
@@ -207,6 +242,20 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    # Initial output dir
+    if not os.path.exists(args.output_dir):
+        os.mkdir(args.output_dir)
+    args.output_dir = args.output_dir + '{}'.format(args.model_type)
+    if not os.path.exists(args.output_dir):
+        os.mkdir(args.output_dir)
+    log_dir = args.output_dir + '/log'
+    if not os.path.exists(log_dir):
+        os.mkdir(log_dir)
+    # Initial logger
+    time_ = time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime())
+    init_logger(log_file=log_dir +
+                f'/{args.model_type}-{args.task_name}-{time_}.log')
+
     args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     config = AutoConfig.from_pretrained(args.check_point)
@@ -217,8 +266,20 @@ if __name__ == "__main__":
         args.check_point, config=config).to(args.device)
     tokenizer = AutoTokenizer.from_pretrained(args.check_point)
 
+    logger.info("Training/evaluation parameters %s", args)
+
     if args.do_train:
         train_dataloader = DataLoader(load_data(args.train_file)[
-            :80], batch_size=args.batch_size, shuffle=True, collate_fn=collate_fn)
+            :50], batch_size=args.batch_size, shuffle=True, collate_fn=collate_fn)
         train(args=args, train_dataloader=train_dataloader,
               model=model, tokenizer=tokenizer, config=config)
+
+        # Save trained model/tokenizer/training parameters
+        if not os.path.exists(args.output_dir):
+            os.makedirs(args.output_dir)
+        logger.info("Saving model checkpoint to {}".format(args.output_dir))
+
+        model_to_save = (model.module if hasattr(model, "module") else model)
+        model_to_save.save_pretrained(args.output_dir)
+        tokenizer.save_vocabulary(args.output_dir)
+        torch.save(args, os.path.join(args.output_dir, "training_args.bin"))
