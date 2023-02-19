@@ -90,7 +90,7 @@ def train(args: argparse.Namespace, train_dataloader, model: BertForNer, tokeniz
         logger.info("\n")
         logger.info(
             f"Epoch {epoch+1}/{args.epoch}: loss value:{tr_loss/global_step}")
-    
+
     if 'cuda' in str(args.device):
         torch.cuda.empty_cache()
     return global_step, tr_loss / global_step
@@ -119,6 +119,8 @@ def evaluate(config, model: BertForNer, eval_dataloader: DataLoader):
             progress_bar.update(1)
     print(classification_report(true_labels,
           true_predictions, mode='strict', scheme=IOB2))
+    return classification_report(true_labels,
+                                 true_predictions, mode='strict', scheme=IOB2)
 
 
 def predict(args: argparse.Namespace, model: BertForNer, predict_dataloader: DataLoader, tokenizer: AutoTokenizer):
@@ -227,7 +229,7 @@ if __name__ == "__main__":
     # runing mode
     parser.add_argument('--do_train', default=True, action='store_true',
                         help='Whether to run train process')
-    parser.add_argument('--do_eval', default=False, action='store_true',
+    parser.add_argument('--do_eval', default=True, action='store_true',
                         help='Whether to run evaluate process')
     parser.add_argument('--do_predict', default=False, action='store_true',
                         help='Whether to run predict process')
@@ -283,3 +285,28 @@ if __name__ == "__main__":
         model_to_save.save_pretrained(args.output_dir)
         tokenizer.save_vocabulary(args.output_dir)
         torch.save(args, os.path.join(args.output_dir, "training_args.bin"))
+
+    results = {}
+    if args.do_eval:
+        tokenizer = AutoTokenizer.from_pretrained(args.output_dir)
+        checkpoints = [args.output_dir]
+        logger.info("Evaluate the following checkpoints: %s", checkpoints)
+
+        eval_dataloader = DataLoader(load_data(args.train_file)[
+            :50], batch_size=args.batch_size, shuffle=True, collate_fn=collate_fn)
+
+        for checkpoint in checkpoints:
+            config = AutoConfig.from_pretrained(checkpoint)
+            model = BertForNer.from_pretrained(checkpoint, config=config)
+            model.to(args.device)
+            result = evaluate(config=config, model=model,
+                              eval_dataloader=eval_dataloader)
+            results.update(result)
+        output_eval_results = os.path.join(args.output, "eval_resutls.txt")
+
+        with open(output_eval_results, 'w') as f:
+            for key in sorted(results.keys()):
+                f.write("{} = {}\n".format(key, str(result[key])))
+
+    if args.do_predict:
+        pass
