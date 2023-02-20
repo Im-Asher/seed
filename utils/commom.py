@@ -55,8 +55,8 @@ def get_parser():
                         type=str,  help='Evaluate file for model evaluate')
     parser.add_argument('--predict_file', default=PREDICT_FILE,
                         type=str,  help='Predict file for model predict')
-    parser.add_argument('--model_type', default="BERT",
-                        type=str,  help="Model type(ONLY BERT!!! NOW)")
+    parser.add_argument('--model_type', default="bert-crf",
+                        type=str,  help="Please select model type!")
     parser.add_argument('--output_dir', default=OUTPUR_DIR, type=str,
                         help='The output directory where the model trained will be written ')
     parser.add_argument('--predict_result_dir', default=PREDICT_RESULT_DIR, type=str,
@@ -79,7 +79,7 @@ def get_parser():
     parser.add_argument('--loss_type', default='ce', type=str,
                         help="loss function type ('lsr', 'focal', 'ce')")
     # runing mode
-    parser.add_argument('--do_train', default=False, action='store_true',
+    parser.add_argument('--do_train', default=True, action='store_true',
                         help='Whether to run train process')
     parser.add_argument('--do_eval', default=True, action='store_true',
                         help='Whether to run evaluate process')

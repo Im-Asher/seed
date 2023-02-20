@@ -37,8 +37,8 @@ def collate_fn(batch_samples):
 
     for idx, sentence in enumerate(batch_sentences):
         encoding = tokenizer(sentence, truncation=True)
-        batch_label[idx][0] = 0
-        batch_label[idx][len(encoding.tokens())-1:] = 0
+        batch_label[idx][0] = -100
+        batch_label[idx][len(encoding.tokens())-1:] = -100
 
         for start, end, tag in batch_tags[idx]:
             token_start = encoding.char_to_token(start)

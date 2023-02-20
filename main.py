@@ -11,7 +11,7 @@ from tqdm import tqdm
 from utils.commom import init_logger, logger
 from torch.utils.data import DataLoader
 from data.data_utils import collate_fn, load_data, id2label, label2id
-from model_provider import BertForNer
+from model_provider import BertForNer, BertCrfForNer, BertMlpForNer
 from transformers import AutoConfig, AutoTokenizer, AdamW, get_scheduler
 from seqeval.metrics import classification_report
 from seqeval.scheme import IOB2
@@ -19,6 +19,12 @@ from utils.commom import get_parser
 
 
 logger = logging.getLogger(__name__)
+
+MODEL_CLASS = {
+    'bert': (AutoConfig, BertForNer, AutoTokenizer),
+    'bert-crf': (AutoConfig, BertCrfForNer, AutoTokenizer),
+    'bert-mlp': (AutoConfig, BertMlpForNer, AutoTokenizer)
+}
 
 
 def train(args: argparse.Namespace, train_dataloader, model: BertForNer, tokenizer, config):
@@ -51,7 +57,7 @@ def train(args: argparse.Namespace, train_dataloader, model: BertForNer, tokeniz
         for batch, (feature, label) in enumerate(train_dataloader, start=1):
             feature, label = feature.to(args.device), label.to(args.device)
 
-            loss, _ = model(feature, label)
+            loss, logits = model(feature, label)
             tr_loss += loss.item()
             optimizer.zero_grad()
             loss.backward()
@@ -98,10 +104,10 @@ def evaluate(config, model: BertForNer, eval_dataloader: DataLoader):
         progress_bar = tqdm(range(len(eval_dataloader)))
         for feature, label in eval_dataloader:
             pred = model(feature)
-            predictions = pred.argmax(dim=-1).cpu().numpy().tolist()
+            predictions = pred[0].argmax(dim=-1).cpu().numpy().tolist()
             labels = label.cpu().numpy().tolist()
             true_labels += [[config.id2label[int(l)]
-                             for l in label if l != 0] for label in labels]
+                             for l in label if l !=-100] for label in labels]
             true_predictions += [
                 [config.id2label[int(p)] for (p, l) in zip(
                     prediction, label) if l != -100]
@@ -197,13 +203,17 @@ if __name__ == "__main__":
 
     args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-    config = AutoConfig.from_pretrained(args.check_point)
+    config_class, model_class, tokenizer_class = MODEL_CLASS[args.model_type]
+
+    config = config_class.from_pretrained(args.check_point)
     config.id2label = id2label
     config.label2id = label2id
     config.loss_type = args.loss_type
-    model = BertForNer.from_pretrained(
+
+    model = model_class.from_pretrained(
         args.check_point, config=config).to(args.device)
-    tokenizer = AutoTokenizer.from_pretrained(
+
+    tokenizer = tokenizer_class.from_pretrained(
         args.check_point, do_lower_case=True)
 
     logger.info("Training/evaluation parameters %s", args)
@@ -226,18 +236,18 @@ if __name__ == "__main__":
 
     results = {}
     if args.do_eval:
-        tokenizer = AutoTokenizer.from_pretrained(
+        tokenizer = tokenizer_class.from_pretrained(
             args.output_dir, do_lower_case=True)
         checkpoints = [args.output_dir]
         logger.info("Evaluate the following checkpoints: %s", checkpoints)
 
-        eval_dataloader = DataLoader(load_data(args.train_file)[80
-            :100], batch_size=args.batch_size, shuffle=True, collate_fn=collate_fn)
+        eval_dataloader = DataLoader(load_data(args.train_file)[
+                                     80:100], batch_size=args.batch_size, shuffle=True, collate_fn=collate_fn)
 
         for checkpoint in checkpoints:
-            config = AutoConfig.from_pretrained(checkpoint)
-            model = BertForNer.from_pretrained(checkpoint, config=config)
-            model.to(args.device)
+            config = config_class.from_pretrained(checkpoint)
+            model = model_class.from_pretrained(
+                checkpoint, config=config).to(args.device)
             result = evaluate(config=config, model=model,
                               eval_dataloader=eval_dataloader)
             results.update(result)

@@ -1,16 +1,16 @@
 import torch
 
 from torch import nn
-from transformers import BertPreTrainedModel, BertModel
+from transformers import BertPreTrainedModel, BertModel,BertForTokenClassification
 from torch.nn import CrossEntropyLoss
 from losses.focal_loss import FocalLoss
 from losses.label_smoothing import LabelSmoothingCrossEntropy
 from TorchCRF import CRF
 
 
-class BertForNer(BertPreTrainedModel):
+class BertMlpForNer(BertPreTrainedModel):
     def __init__(self, config) -> None:
-        super(BertForNer, self).__init__(config)
+        super(BertMlpForNer, self).__init__(config)
         self.num_labels = config.num_labels
         self.bert = BertModel(config)
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
@@ -48,6 +48,16 @@ class BertForNer(BertPreTrainedModel):
         return outputs
 
 
+class BertForNer(BertPreTrainedModel):
+    def __init__(self,config) -> None:
+        super(BertForNer,self).__init__(config)
+        self.bert = BertForTokenClassification(config)
+
+    def forward(self,feature,label=None):
+        output = self.bert(**feature,labels=label,return_dict=False)
+        return output
+
+
 class BertCrfForNer(BertPreTrainedModel):
     def __init__(self, config) -> None:
         super(BertCrfForNer, self).__init__(config)
@@ -55,7 +65,7 @@ class BertCrfForNer(BertPreTrainedModel):
         self.bert = BertModel(config)
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
         self.classifier = nn.Linear(config.hidden_size, config.num_labels)
-        self.crf = CRF(num_labels=config.num_labels, batch_first=True)
+        self.crf = CRF(num_tags=config.num_labels, batch_first=True)
         self.loss_type = config.loss_type
         self.init_weights()
 
