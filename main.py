@@ -15,17 +15,8 @@ from model_provider import BertForNer
 from transformers import AutoConfig, AutoTokenizer, AdamW, get_scheduler
 from seqeval.metrics import classification_report
 from seqeval.scheme import IOB2
+from utils.commom import get_parser
 
-DATA_DIR = './data/dataset/'
-TRAIN_FILE = DATA_DIR + 'cve-500.jsonl'
-EVAL_FILE = DATA_DIR + 'cve-500.jsonl'
-PREDICT_FILE = DATA_DIR + 'cve-500.jsonl'
-
-
-CHECK_POINT = 'bert-base-uncased'
-
-OUTPUR_DIR = './model_cache/'
-PREDICT_RESULT_DIR = OUTPUR_DIR+'predict_result.json'
 
 logger = logging.getLogger(__name__)
 
@@ -188,62 +179,8 @@ def predict(args: argparse.Namespace, model: BertForNer, predict_dataloader: Dat
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser('NLP model parameter setting.')
 
-    # Required parameters
-    parser.add_argument('--data_dir', default=DATA_DIR,
-                        type=str, help='The input data dir.')
-    parser.add_argument('--task_name', default="SV",
-                        type=str,  help='Execute task name using model')
-    parser.add_argument('--check_point', default=CHECK_POINT, type=str,
-                        help='The name of pre-traind model name or path in local')
-    parser.add_argument('--train_file', default=TRAIN_FILE,
-                        type=str,  help='Train file for model training')
-    parser.add_argument('--evaluate_file', default=EVAL_FILE,
-                        type=str,  help='Evaluate file for model evaluate')
-    parser.add_argument('--predict_file', default=PREDICT_FILE,
-                        type=str,  help='Predict file for model predict')
-    parser.add_argument('--model_type', default="BERT",
-                        type=str,  help="Model type(ONLY BERT!!! NOW)")
-    parser.add_argument('--output_dir', default=OUTPUR_DIR, type=str,
-                        help='The output directory where the model trained will be written ')
-    parser.add_argument('--predict_result_dir', default=PREDICT_RESULT_DIR, type=str,
-                        help='The predict result file path when do predict')
-
-    # Optional parameters
-    # train parameters
-    parser.add_argument('--batch_size', default=10,
-                        type=int, help='The dataset batch size')
-    parser.add_argument('--epoch', default=10, type=int,
-                        help='Total number of training epochs to perform')
-    parser.add_argument('--max_train_step', default=8600,
-                        type=int, help='Max step for model training')
-    parser.add_argument('--learning_rate', default=2e-5, type=float,
-                        help='Default learning rate for model training.')
-    parser.add_argument('--num_training_steps', default=8600, type=int,
-                        help='Training step.')
-    parser.add_argument('--save_step', default=1000, type=int,
-                        help="Save checkpoint every X updates steps")
-    parser.add_argument('--loss_type', default='ce', type=str,
-                        help="loss function type ('lsr', 'focal', 'ce')")
-    # runing mode
-    parser.add_argument('--do_train', default=True, action='store_true',
-                        help='Whether to run train process')
-    parser.add_argument('--do_eval', default=True, action='store_true',
-                        help='Whether to run evaluate process')
-    parser.add_argument('--do_predict', default=False, action='store_true',
-                        help='Whether to run predict process')
-
-    # model/config/tokenizer setting
-    parser.add_argument('--config_name', default=CHECK_POINT,
-                        type=str, help='Pretrained config check point')
-    parser.add_argument('--model_name', default=CHECK_POINT,
-                        type=str, help='Pretrained model check point')
-    parser.add_argument('--tokenizer_name', default=CHECK_POINT,
-                        type=str, help='Pretrained tokenizer check point')
-
-    args = parser.parse_args()
-
+    args = get_parser().parse_args()
     # Initial output dir
     if not os.path.exists(args.output_dir):
         os.mkdir(args.output_dir)
@@ -266,13 +203,14 @@ if __name__ == "__main__":
     config.loss_type = args.loss_type
     model = BertForNer.from_pretrained(
         args.check_point, config=config).to(args.device)
-    tokenizer = AutoTokenizer.from_pretrained(args.check_point)
+    tokenizer = AutoTokenizer.from_pretrained(
+        args.check_point, do_lower_case=True)
 
     logger.info("Training/evaluation parameters %s", args)
 
     if args.do_train:
         train_dataloader = DataLoader(load_data(args.train_file)[
-            :50], batch_size=args.batch_size, shuffle=True, collate_fn=collate_fn)
+            :80], batch_size=args.batch_size, shuffle=True, collate_fn=collate_fn)
         train(args=args, train_dataloader=train_dataloader,
               model=model, tokenizer=tokenizer, config=config)
 
@@ -288,12 +226,13 @@ if __name__ == "__main__":
 
     results = {}
     if args.do_eval:
-        tokenizer = AutoTokenizer.from_pretrained(args.output_dir)
+        tokenizer = AutoTokenizer.from_pretrained(
+            args.output_dir, do_lower_case=True)
         checkpoints = [args.output_dir]
         logger.info("Evaluate the following checkpoints: %s", checkpoints)
 
-        eval_dataloader = DataLoader(load_data(args.train_file)[
-            :50], batch_size=args.batch_size, shuffle=True, collate_fn=collate_fn)
+        eval_dataloader = DataLoader(load_data(args.train_file)[80
+            :100], batch_size=args.batch_size, shuffle=True, collate_fn=collate_fn)
 
         for checkpoint in checkpoints:
             config = AutoConfig.from_pretrained(checkpoint)

@@ -5,6 +5,7 @@ from transformers import BertPreTrainedModel, BertModel
 from torch.nn import CrossEntropyLoss
 from losses.focal_loss import FocalLoss
 from losses.label_smoothing import LabelSmoothingCrossEntropy
+from TorchCRF import CRF
 
 
 class BertForNer(BertPreTrainedModel):
@@ -34,14 +35,37 @@ class BertForNer(BertPreTrainedModel):
             # Only keep active parts of the loss
             attention_mask = feature.data['attention_mask']
             if attention_mask is not None:
-                # active_loss = attention_mask.view(-1) == 1
-                # active_logits = logits.view(-1, self.num_labels)[active_loss]
-                # active_labels = labels.view(-1)[active_loss]
-                # loss = loss_fct(active_logits, active_labels)
-                loss = loss_fct(logits.permute(0, 2, 1), labels)
+                active_loss = attention_mask.view(-1) == 1
+                active_logits = logits.view(-1, self.num_labels)[active_loss]
+                active_labels = labels.view(-1)[active_loss]
+                loss = loss_fct(active_logits, active_labels)
+                # loss = loss_fct(logits.permute(0, 2, 1), labels)
             else:
                 loss = loss_fct(
                     logits.view(-1, self.num_labels), labels.view(-1))
             # outputs = (loss,) + outputs
             return loss, outputs
         return outputs
+
+
+class BertCrfForNer(BertPreTrainedModel):
+    def __init__(self, config) -> None:
+        super(BertCrfForNer, self).__init__(config)
+        self.num_labels = config.num_labels
+        self.bert = BertModel(config)
+        self.dropout = nn.Dropout(config.hidden_dropout_prob)
+        self.classifier = nn.Linear(config.hidden_size, config.num_labels)
+        self.crf = CRF(num_labels=config.num_labels, batch_first=True)
+        self.loss_type = config.loss_type
+        self.init_weights()
+
+    def forward(self,feature,labels=None):
+        outputs = self.bert(**feature)
+        sequence_output = outputs.last_hidden_state
+        sequence_output = self.dropout(sequence_output)
+        logits = self.classifier(sequence_output)
+        loss = None
+        if labels is not None:
+            attention_mask = feature.data['attention_mask']
+            loss = self.crf(emissions=logits,tags=labels,mask=attention_mask)
+        return loss,logits
