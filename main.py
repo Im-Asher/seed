@@ -13,7 +13,7 @@ from torch.utils.data import DataLoader
 from data.data_utils import collate_fn, load_data, id2label, label2id
 from model_provider import BertForNer, BertCrfForNer, BertMlpForNer
 from transformers import AutoConfig, AutoTokenizer, AdamW, get_scheduler
-from seqeval.metrics import classification_report
+from seqeval.metrics import classification_report,f1_score,accuracy_score,precision_score,recall_score
 from seqeval.scheme import IOB2
 from utils.commom import get_parser
 
@@ -114,10 +114,15 @@ def evaluate(config, model: BertForNer, eval_dataloader: DataLoader):
                 for prediction, label in zip(predictions, labels)
             ]
             progress_bar.update(1)
+    print('\n')
     print(classification_report(true_labels,
           true_predictions, mode='strict', scheme=IOB2))
-    return classification_report(true_labels,
-                                 true_predictions, mode='strict', scheme=IOB2)
+    f1_value = f1_score(true_labels,true_predictions)
+    precision_value = precision_score(true_labels,true_predictions)
+    recall_value = recall_score(true_labels,true_predictions)
+    accuracy_value = accuracy_score(true_labels,true_predictions)
+    print(f'f1_value:{f1_value},precision_value:{precision_value},recall_value:{recall_value},accuracy_value:{accuracy_value}')
+    return f1_value
 
 
 def predict(args: argparse.Namespace, model: BertForNer, predict_dataloader: DataLoader, tokenizer: AutoTokenizer):
@@ -220,7 +225,7 @@ if __name__ == "__main__":
 
     if args.do_train:
         train_dataloader = DataLoader(load_data(args.train_file)[
-            :80], batch_size=args.batch_size, shuffle=True, collate_fn=collate_fn)
+            :400], batch_size=args.batch_size, shuffle=True, collate_fn=collate_fn)
         train(args=args, train_dataloader=train_dataloader,
               model=model, tokenizer=tokenizer, config=config)
 
@@ -242,7 +247,7 @@ if __name__ == "__main__":
         logger.info("Evaluate the following checkpoints: %s", checkpoints)
 
         eval_dataloader = DataLoader(load_data(args.train_file)[
-                                     80:100], batch_size=args.batch_size, shuffle=True, collate_fn=collate_fn)
+                                     400:], batch_size=args.batch_size, shuffle=True, collate_fn=collate_fn)
 
         for checkpoint in checkpoints:
             config = config_class.from_pretrained(checkpoint)
@@ -250,12 +255,12 @@ if __name__ == "__main__":
                 checkpoint, config=config).to(args.device)
             result = evaluate(config=config, model=model,
                               eval_dataloader=eval_dataloader)
-            results.update(result)
-        output_eval_results = os.path.join(args.output, "eval_resutls.txt")
+            results.update({checkpoint:result})
+        output_eval_results = os.path.join(args.output_dir, "eval_resutls.txt")
 
         with open(output_eval_results, 'w') as f:
             for key in sorted(results.keys()):
-                f.write("{} = {}\n".format(key, str(result[key])))
+                f.write("{} = {}\n".format(key, str(results[key])))
 
     if args.do_predict:
         pass
