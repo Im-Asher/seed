@@ -5,7 +5,7 @@ from transformers import BertPreTrainedModel, BertModel,BertForTokenClassificati
 from torch.nn import CrossEntropyLoss
 from losses.focal_loss import FocalLoss
 from losses.label_smoothing import LabelSmoothingCrossEntropy
-from TorchCRF import CRF
+from torchcrf import CRF
 
 
 class BertMlpForNer(BertPreTrainedModel):
