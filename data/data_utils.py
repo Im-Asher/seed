@@ -37,15 +37,15 @@ def collate_fn(batch_samples):
 
     for idx, sentence in enumerate(batch_sentences):
         encoding = tokenizer(sentence, truncation=True)
-        batch_label[idx][0] = -100
-        batch_label[idx][len(encoding.tokens())-1:] = -100
+        batch_label[idx][0] = 0
+        batch_label[idx][len(encoding.tokens())-1:] = 0
 
         for start, end, tag in batch_tags[idx]:
             token_start = encoding.char_to_token(start)
-            token_end = encoding.char_to_token(end)
+            token_end = encoding.char_to_token(end-2)
             batch_label[idx][token_start] = label2id[f'B-{tag}']
             try:
-                batch_label[idx][token_start+1:token_end] = label2id[f'I-{tag}']
+                batch_label[idx][token_start+1:token_end+1] = label2id[f'I-{tag}']
             except Exception as e:
                 print(idx,sentence)
 

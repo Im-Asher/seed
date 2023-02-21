@@ -114,8 +114,7 @@ def evaluate(config, model: BertForNer, eval_dataloader: DataLoader):
                 for prediction, label in zip(predictions, labels)
             ]
             progress_bar.update(1)
-    print('\n')
-    print(classification_report(true_labels,
+    logger.info(classification_report(true_labels,
           true_predictions, mode='strict', scheme=IOB2))
     f1_value = f1_score(true_labels,true_predictions)
     precision_value = precision_score(true_labels,true_predictions)

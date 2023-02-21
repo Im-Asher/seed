@@ -1,7 +1,8 @@
 import torch
 
 from torch import nn
-from transformers import BertPreTrainedModel, BertModel,BertForTokenClassification
+from transformers import BertPreTrainedModel, BertModel, BertForTokenClassification
+from transformers.modeling_outputs import TokenClassifierOutput
 from torch.nn import CrossEntropyLoss
 from losses.focal_loss import FocalLoss
 from losses.label_smoothing import LabelSmoothingCrossEntropy
@@ -49,12 +50,12 @@ class BertMlpForNer(BertPreTrainedModel):
 
 
 class BertForNer(BertPreTrainedModel):
-    def __init__(self,config) -> None:
-        super(BertForNer,self).__init__(config)
+    def __init__(self, config) -> None:
+        super(BertForNer, self).__init__(config)
         self.bert = BertForTokenClassification(config)
 
-    def forward(self,feature,label=None):
-        output = self.bert(**feature,labels=label,return_dict=False)
+    def forward(self, feature, label=None):
+        output = self.bert(**feature, labels=label, return_dict=False)
         return output
 
 
@@ -69,13 +70,24 @@ class BertCrfForNer(BertPreTrainedModel):
         self.loss_type = config.loss_type
         self.init_weights()
 
-    def forward(self,feature,labels=None):
+    def forward(self, feature, labels=None):
         outputs = self.bert(**feature)
         sequence_output = outputs.last_hidden_state
         sequence_output = self.dropout(sequence_output)
         logits = self.classifier(sequence_output)
         loss = None
         if labels is not None:
-            attention_mask = feature.data['attention_mask']
-            loss = self.crf(emissions=logits,tags=labels,mask=attention_mask)
-        return loss,logits
+            active_mask = torch.tensor(
+                feature.data['attention_mask'], dtype=torch.uint8)
+            # active_mask = []
+            # for label in labels:
+            #     res = []
+            #     for l in label:
+            #         if l != -100:
+            #             res.append(1)
+            #         else:
+            #             res.append(0)
+            #     active_mask.append(res)
+            # active_mask = torch.tensor(feature.data['attention_mask'],dtype=torch.uint8)
+            loss = -self.crf(emissions=logits, tags=labels, mask=active_mask)
+        return ((loss,) + (logits,)) if loss is not None else (logits,)
