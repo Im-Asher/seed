@@ -3,7 +3,7 @@ TASK_NAME="SV"
 
 export BERT_BASE_DIR=$CURRENT_DIR/pre_trained_model/bert-base-uncased
 export DATA_DIR=$CURRENT_DIR/data/datasets
-export OUTPUT_DIR=$CURRENT_DIR/outputs
+export OUTPUT_DIR=$CURRENT_DIR/outputs/
 
 
 python3 main.py \
@@ -19,4 +19,4 @@ python3 main.py \
     --num_train_epoch=4 \
     --logging_step=-1 \
     --save_step=-1 \
-    --output_dir=$OUTPUT_DIR/${TASK_NAME}_output/
+    --output_dir=$OUTPUT_DIR
