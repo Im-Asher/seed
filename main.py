@@ -37,7 +37,7 @@ def train(args: argparse.Namespace, train_dataloader, model: BertForNer, tokeniz
     # Show Training Parameters
     logger.info("***** Training Parameters Information *****")
     logger.info("Data size = %d", len(train_dataloader)*args.batch_size)
-    logger.info("Training epochs = %d", args.epoch)
+    logger.info("Training epochs = %d", args.num_train_epoch)
     logger.info("Learining rate = %f", args.learning_rate)
     logger.info("Data batch size = %d", args.batch_size)
     logger.info("***** Training Fun *****")
@@ -45,7 +45,7 @@ def train(args: argparse.Namespace, train_dataloader, model: BertForNer, tokeniz
     progress_bar = tqdm(range(len(train_dataloader)), ncols=100)
 
     for epoch in range(args.num_train_epoch):
-        logger.info(f'Epoch {epoch +1}/{args.epoch}\n-------------------')
+        logger.info(f'Epoch {epoch +1}/{args.num_train_epoch}\n-------------------')
         progress_bar.reset()
         progress_bar.set_description(f'loss value:{0:>7f}')
 
