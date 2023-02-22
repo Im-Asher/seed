@@ -8,7 +8,7 @@ export OUTPUT_DIR=$CURRENT_DIR/outputs
 
 python3 main.py \
     --model_type=bert-crf \
-    --name_or_path=$BERT_BASE_DIR \
+    --name_or_path=bert-base-uncased \
     --task_name=$TASK_NAME \
     --do_train \
     --do_eval \
