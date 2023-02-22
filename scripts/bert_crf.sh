@@ -7,12 +7,12 @@ export OUTPUT_DIR=$CURRENT_DIR/outputs
 
 
 python3 main.py \
-    --model_type=bert-crf \ 
+    --model_type=bert-crf \
     --name_or_path=$BERT_BASE_DIR \
     --task_name=$TASK_NAME \
     --do_train \
     --do_eval \
-    --do_lower_case 
+    --do_lower_case \
     --data_dir=$DATA_DIR/${TASK_NAME}/ \
     --learning_rate=3e-5 \
     --crf_learning_rate=1e-3 \
