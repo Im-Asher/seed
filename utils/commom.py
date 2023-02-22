@@ -3,11 +3,11 @@ import argparse
 
 from pathlib import Path
 
-DATA_DIR = './data/dataset/'
-TRAIN_FILE = DATA_DIR + 'cve-500.jsonl'
-EVAL_FILE = DATA_DIR + 'cve-500.jsonl'
-PREDICT_FILE = DATA_DIR + 'cve-500.jsonl'
-
+TASK_NAME = 'SV'
+DATA_DIR = './data/datasets/'
+TRAIN_FILE = DATA_DIR + TASK_NAME + '/cve-500.jsonl'
+EVAL_FILE = DATA_DIR + TASK_NAME + '/cve-500.jsonl'
+PREDICT_FILE = DATA_DIR + TASK_NAME + '/cve-500.jsonl'
 
 CHECK_POINT = 'bert-base-uncased'
 
@@ -16,13 +16,14 @@ PREDICT_RESULT_DIR = OUTPUR_DIR+'predict_result.json'
 
 logger = logging.getLogger()
 
+
 def init_logger(log_file=None, log_file_level=logging.NOTSET):
     '''
     Example:
         >>> init_logger(log_file)
         >>> logger.info("abc'")
     '''
-    if isinstance(log_file,Path):
+    if isinstance(log_file, Path):
         log_file = str(log_file)
     log_format = logging.Formatter(fmt='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
                                    datefmt='%m/%d/%Y %H:%M:%S')
@@ -39,15 +40,16 @@ def init_logger(log_file=None, log_file_level=logging.NOTSET):
         logger.addHandler(file_handler)
     return logger
 
+
 def get_parser():
     parser = argparse.ArgumentParser('NLP model parameter setting.')
 
     # Required parameters
-    parser.add_argument('--data_dir', default=DATA_DIR,
+    parser.add_argument('--data_dir', default=DATA_DIR+TASK_NAME,
                         type=str, help='The input data dir.')
-    parser.add_argument('--task_name', default="SV",
+    parser.add_argument('--task_name', default=TASK_NAME,
                         type=str,  help='Execute task name using model')
-    parser.add_argument('--check_point', default=CHECK_POINT, type=str,
+    parser.add_argument('--name_or_path', default=CHECK_POINT, type=str,
                         help='The name of pre-traind model name or path in local')
     parser.add_argument('--train_file', default=TRAIN_FILE,
                         type=str,  help='Train file for model training')
@@ -55,7 +57,7 @@ def get_parser():
                         type=str,  help='Evaluate file for model evaluate')
     parser.add_argument('--predict_file', default=PREDICT_FILE,
                         type=str,  help='Predict file for model predict')
-    parser.add_argument('--model_type', default="bert-crf",
+    parser.add_argument('--model_type', default="bert",
                         type=str,  help="Please select model type!")
     parser.add_argument('--output_dir', default=OUTPUR_DIR, type=str,
                         help='The output directory where the model trained will be written ')
@@ -66,11 +68,13 @@ def get_parser():
     # train parameters
     parser.add_argument('--batch_size', default=4,
                         type=int, help='The dataset batch size')
-    parser.add_argument('--epoch', default=3, type=int,
+    parser.add_argument('--epoch', default=5, type=int,
                         help='Total number of training epochs to perform')
     parser.add_argument('--max_train_step', default=8600,
                         type=int, help='Max step for model training')
     parser.add_argument('--learning_rate', default=2e-5, type=float,
+                        help='Default learning rate for model training.')
+    parser.add_argument('--crf_learning_rate', default=1e-3, type=float,
                         help='Default learning rate for model training.')
     parser.add_argument('--num_training_steps', default=8600, type=int,
                         help='Training step.')
@@ -78,6 +82,8 @@ def get_parser():
                         help="Save checkpoint every X updates steps")
     parser.add_argument('--loss_type', default='ce', type=str,
                         help="loss function type ('lsr', 'focal', 'ce')")
+    parser.add_argument('--warmup_proportion', default=0.1,
+                        type=float, help="Set warm up proportion")
     # runing mode
     parser.add_argument('--do_train', default=True, action='store_true',
                         help='Whether to run train process')
@@ -86,12 +92,8 @@ def get_parser():
     parser.add_argument('--do_predict', default=False, action='store_true',
                         help='Whether to run predict process')
 
-    # model/config/tokenizer setting
-    parser.add_argument('--config_name', default=CHECK_POINT,
-                        type=str, help='Pretrained config check point')
-    parser.add_argument('--model_name', default=CHECK_POINT,
-                        type=str, help='Pretrained model check point')
-    parser.add_argument('--tokenizer_name', default=CHECK_POINT,
-                        type=str, help='Pretrained tokenizer check point')
+    # tokenizer setting
+    parser.add_argument('--do_lower_case', default=True,
+                        action='store_true', help='Pretrained config check point')
 
     return parser

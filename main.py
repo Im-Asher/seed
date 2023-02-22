@@ -209,16 +209,16 @@ if __name__ == "__main__":
 
     config_class, model_class, tokenizer_class = MODEL_CLASS[args.model_type]
 
-    config = config_class.from_pretrained(args.check_point)
+    config = config_class.from_pretrained(args.name_or_path)
     config.id2label = id2label
     config.label2id = label2id
     config.loss_type = args.loss_type
 
     model = model_class.from_pretrained(
-        args.check_point, config=config).to(args.device)
+        args.name_or_path, config=config).to(args.device)
 
     tokenizer = tokenizer_class.from_pretrained(
-        args.check_point, do_lower_case=True)
+        args.name_or_path, do_lower_case=True)
 
     logger.info("Training/evaluation parameters %s", args)
 
