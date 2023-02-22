@@ -44,7 +44,7 @@ def train(args: argparse.Namespace, train_dataloader, model: BertForNer, tokeniz
 
     progress_bar = tqdm(range(len(train_dataloader)), ncols=100)
 
-    for epoch in range(args.epoch):
+    for epoch in range(args.num_train_epoch):
         logger.info(f'Epoch {epoch +1}/{args.epoch}\n-------------------')
         progress_bar.reset()
         progress_bar.set_description(f'loss value:{0:>7f}')
@@ -86,7 +86,7 @@ def train(args: argparse.Namespace, train_dataloader, model: BertForNer, tokeniz
                     output_dir, "lr_scheduler.pt"))
         logger.info("\n")
         logger.info(
-            f"Epoch {epoch+1}/{args.epoch}: loss value:{tr_loss/global_step}")
+            f"Epoch {epoch+1}/{args.num_train_epoch}: loss value:{tr_loss/global_step}")
 
     if 'cuda' in str(args.device):
         torch.cuda.empty_cache()

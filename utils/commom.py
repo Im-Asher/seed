@@ -68,7 +68,7 @@ def get_parser():
     # train parameters
     parser.add_argument('--batch_size', default=4,
                         type=int, help='The dataset batch size')
-    parser.add_argument('--epoch', default=5, type=int,
+    parser.add_argument('--num_train_epoch', default=5, type=int,
                         help='Total number of training epochs to perform')
     parser.add_argument('--max_train_step', default=8600,
                         type=int, help='Max step for model training')
@@ -78,12 +78,15 @@ def get_parser():
                         help='Default learning rate for model training.')
     parser.add_argument('--num_training_steps', default=8600, type=int,
                         help='Training step.')
+    parser.add_argument('--logging_step', default=1000, type=int,
+                        help="Log checkpoint every X updates steps")
     parser.add_argument('--save_step', default=1000, type=int,
                         help="Save checkpoint every X updates steps")
     parser.add_argument('--loss_type', default='ce', type=str,
                         help="loss function type ('lsr', 'focal', 'ce')")
     parser.add_argument('--warmup_proportion', default=0.1,
                         type=float, help="Set warm up proportion")
+            
     # runing mode
     parser.add_argument('--do_train', default=True, action='store_true',
                         help='Whether to run train process')
