@@ -103,6 +103,7 @@ def evaluate(config, model: BertForNer, eval_dataloader: DataLoader):
     with torch.no_grad():
         progress_bar = tqdm(range(len(eval_dataloader)))
         for feature, label in eval_dataloader:
+            feature, label = feature.to(args.device), label.to(args.device)
             pred = model(feature)
             predictions = pred[0].argmax(dim=-1).cpu().numpy().tolist()
             labels = label.cpu().numpy().tolist()
