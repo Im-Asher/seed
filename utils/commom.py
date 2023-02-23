@@ -74,6 +74,10 @@ def get_parser():
                         type=int, help='Max step for model training')
     parser.add_argument('--learning_rate', default=2e-5, type=float,
                         help='Default learning rate for model training.')
+    parser.add_argument("--adam_epsilon", default=1e-8, type=float,
+                        help="Epsilon for Adam optimizer.")  
+    parser.add_argument("--weight_decay", default=0.01, type=float,
+                        help="Weight decay if we apply some.")
     parser.add_argument('--crf_learning_rate', default=1e-3, type=float,
                         help='Default learning rate for model training.')
     parser.add_argument('--num_training_steps', default=8600, type=int,
@@ -86,6 +90,10 @@ def get_parser():
                         help="loss function type ('lsr', 'focal', 'ce')")
     parser.add_argument('--warmup_proportion', default=0.1,
                         type=float, help="Set warm up proportion")
+    parser.add_argument("--gradient_accumulation_steps", type=int, default=1,
+                        help="Number of updates steps to accumulate before performing a backward/update pass.", )
+    parser.add_argument("--max_steps", default=-1, type=int,
+                        help="If > 0: set total number of training steps to perform. Override num_train_epochs.", )
             
     # runing mode
     parser.add_argument('--do_train', default=True, action='store_true',

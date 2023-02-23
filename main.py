@@ -16,6 +16,7 @@ from transformers import AutoConfig, AutoTokenizer, AdamW, get_scheduler
 from seqeval.metrics import classification_report,f1_score,accuracy_score,precision_score,recall_score
 from seqeval.scheme import IOB2
 from utils.commom import get_parser
+from torch.optim.lr_scheduler import LambdaLR
 
 
 logger = logging.getLogger(__name__)
@@ -26,16 +27,60 @@ MODEL_CLASS = {
     'bert-mlp': (AutoConfig, BertMlpForNer, AutoTokenizer)
 }
 
+def get_linear_schedule_with_warmup(optimizer, num_warmup_steps, num_training_steps, last_epoch=-1):
+    """ Create a schedule with a learning rate that decreases linearly after
+    linearly increasing during a warmup period.
+    """
+    def lr_lambda(current_step):
+        if current_step < num_warmup_steps:
+            return float(current_step) / float(max(1, num_warmup_steps))
+        return max(0.0, float(num_training_steps - current_step) / float(max(1, num_training_steps - num_warmup_steps)))
+
+    return LambdaLR(optimizer, lr_lambda, last_epoch)
 
 def train(args: argparse.Namespace, train_dataloader, model: BertForNer, tokenizer, config):
-    optimizer = AdamW(model.parameters(), lr=args.learning_rate)
-    lr_scheduler = get_scheduler('linear', optimizer=optimizer,
-                                 num_warmup_steps=0, num_training_steps=args.num_training_steps)
+    # optimizer = AdamW(model.parameters(), lr=args.learning_rate)
+    # lr_scheduler = get_scheduler('linear', optimizer=optimizer,
+    #                              num_warmup_steps=0, num_training_steps=args.num_training_steps)
     global_step = 0
     tr_loss = 0.0
+    
+    if args.max_steps > 0:
+        t_total = args.max_steps
+        args.num_train_epoch = args.max_steps // (len(train_dataloader) // args.gradient_accumulation_steps) + 1
+    else:
+        t_total = len(train_dataloader) // args.gradient_accumulation_steps * args.num_train_epoch
 
+    no_decay = ["bias", "LayerNorm.weight"]
+
+    bert_param_optimizer = list(model.bert.named_parameters())
+    crf_param_optimizer = list(model.crf.named_parameters())
+    linear_param_optimizer = list(model.classifier.named_parameters())
+
+    optimizer_grouped_parameters = [
+        {'params': [p for n, p in bert_param_optimizer if not any(nd in n for nd in no_decay)],
+         'weight_decay': args.weight_decay, 'lr': args.learning_rate},
+        {'params': [p for n, p in bert_param_optimizer if any(nd in n for nd in no_decay)], 'weight_decay': 0.0,
+         'lr': args.learning_rate},
+
+        {'params': [p for n, p in crf_param_optimizer if not any(nd in n for nd in no_decay)],
+         'weight_decay': args.weight_decay, 'lr': args.crf_learning_rate},
+        {'params': [p for n, p in crf_param_optimizer if any(nd in n for nd in no_decay)], 'weight_decay': 0.0,
+         'lr': args.crf_learning_rate},
+
+        {'params': [p for n, p in linear_param_optimizer if not any(nd in n for nd in no_decay)],
+         'weight_decay': args.weight_decay, 'lr': args.crf_learning_rate},
+        {'params': [p for n, p in linear_param_optimizer if any(nd in n for nd in no_decay)], 'weight_decay': 0.0,
+         'lr': args.crf_learning_rate}
+    ]
+
+    args.warmup_steps = int(t_total * args.warmup_proportion)
+    optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate, eps=args.adam_epsilon)
+    scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=args.warmup_steps,
+                                                num_training_steps=t_total)
     # Show Training Parameters
     logger.info("***** Training Parameters Information *****")
+    logger.info("Current model name = %s", args.model_type)
     logger.info("Data size = %d", len(train_dataloader)*args.batch_size)
     logger.info("Training epochs = %d", args.num_train_epoch)
     logger.info("Learining rate = %f", args.learning_rate)
@@ -62,7 +107,7 @@ def train(args: argparse.Namespace, train_dataloader, model: BertForNer, tokeniz
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-            lr_scheduler.step()
+            scheduler.step()
 
             n_epoch_total_loss += loss.item()
 
