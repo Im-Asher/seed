@@ -57,7 +57,7 @@ def get_parser():
                         type=str,  help='Evaluate file for model evaluate')
     parser.add_argument('--predict_file', default=PREDICT_FILE,
                         type=str,  help='Predict file for model predict')
-    parser.add_argument('--model_type', default="bert",
+    parser.add_argument('--model_type', default="bert-crf",
                         type=str,  help="Please select model type!")
     parser.add_argument('--output_dir', default=OUTPUR_DIR, type=str,
                         help='The output directory where the model trained will be written ')

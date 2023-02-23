@@ -42,7 +42,7 @@ def collate_fn(batch_samples):
 
         for start, end, tag in batch_tags[idx]:
             token_start = encoding.char_to_token(start)
-            token_end = encoding.char_to_token(end-2)
+            token_end = encoding.char_to_token(end-1)
             batch_label[idx][token_start] = label2id[f'B-{tag}']
             try:
                 batch_label[idx][token_start+1:token_end+1] = label2id[f'I-{tag}']
