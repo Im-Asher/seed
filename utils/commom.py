@@ -68,7 +68,7 @@ def get_parser():
     # train parameters
     parser.add_argument('--batch_size', default=4,
                         type=int, help='The dataset batch size')
-    parser.add_argument('--num_train_epoch', default=5, type=int,
+    parser.add_argument('--num_train_epoch', default=3, type=int,
                         help='Total number of training epochs to perform')
     parser.add_argument('--max_train_step', default=8600,
                         type=int, help='Max step for model training')
@@ -96,7 +96,7 @@ def get_parser():
                         help="If > 0: set total number of training steps to perform. Override num_train_epochs.", )
             
     # runing mode
-    parser.add_argument('--do_train', default=True, action='store_true',
+    parser.add_argument('--do_train', default=False, action='store_true',
                         help='Whether to run train process')
     parser.add_argument('--do_eval', default=True, action='store_true',
                         help='Whether to run evaluate process')

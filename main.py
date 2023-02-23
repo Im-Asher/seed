@@ -149,15 +149,24 @@ def evaluate(config, model: BertForNer, eval_dataloader: DataLoader):
         progress_bar = tqdm(range(len(eval_dataloader)))
         for feature, label in eval_dataloader:
             feature, label = feature.to(args.device), label.to(args.device)
-            pred = model(feature)
+            loss,pred = model(feature,label)
+            masks = torch.tensor(feature['attention_mask'],dtype=torch.uint8)
+            tags = model.crf.decode(pred,masks)
             predictions = pred[0].argmax(dim=-1).cpu().numpy().tolist()
             labels = label.cpu().numpy().tolist()
+            # true_labels += [[config.id2label[int(l)]
+            #                  for l in label if l !=-100] for label in labels]
             true_labels += [[config.id2label[int(l)]
-                             for l in label if l !=-100] for label in labels]
+                             for m,l in zip(mask,label) if m !=0] for mask,label in zip(masks,labels) ]
+            # true_predictions += [
+            #     [config.id2label[int(p)] for (p, l) in zip(
+            #         prediction, label) if l != -100]
+            #     for prediction, label in zip(predictions, labels)
+            # ]
             true_predictions += [
                 [config.id2label[int(p)] for (p, l) in zip(
                     prediction, label) if l != -100]
-                for prediction, label in zip(predictions, labels)
+                for prediction, label in zip(tags, labels)
             ]
             progress_bar.update(1)
     logger.info(classification_report(true_labels,
