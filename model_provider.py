@@ -75,19 +75,10 @@ class BertCrfForNer(BertPreTrainedModel):
         sequence_output = outputs.last_hidden_state
         sequence_output = self.dropout(sequence_output)
         logits = self.classifier(sequence_output)
-        loss = None
+        outputs = (logits,)
         if labels is not None:
             active_mask = torch.tensor(
                 feature.data['attention_mask'], dtype=torch.uint8)
-            # active_mask = []
-            # for label in labels:
-            #     res = []
-            #     for l in label:
-            #         if l != -100:
-            #             res.append(1)
-            #         else:
-            #             res.append(0)
-            #     active_mask.append(res)
-            # active_mask = torch.tensor(feature.data['attention_mask'],dtype=torch.uint8)
-            loss = -self.crf(emissions=logits, tags=labels, mask=active_mask)
-        return ((loss,) + (logits,)) if loss is not None else (logits,)
+            loss = self.crf(emissions=logits, tags=labels, mask=active_mask)
+            outputs = (-1 * loss,) +outputs
+        return outputs

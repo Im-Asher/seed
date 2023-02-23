@@ -57,7 +57,7 @@ def train(args: argparse.Namespace, train_dataloader, model: BertForNer, tokeniz
         for batch, (feature, label) in enumerate(train_dataloader, start=1):
             feature, label = feature.to(args.device), label.to(args.device)
 
-            loss, logits = model(feature, label)
+            loss, _ = model(feature, label)
             tr_loss += loss.item()
             optimizer.zero_grad()
             loss.backward()

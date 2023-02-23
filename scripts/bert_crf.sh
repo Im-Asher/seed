@@ -14,9 +14,9 @@ python3 main.py \
     --do_eval \
     --do_lower_case \
     --data_dir=$DATA_DIR/${TASK_NAME}/ \
-    --learning_rate=3e-5 \
+    --learning_rate=2e-5 \
     --crf_learning_rate=1e-3 \
-    --num_train_epoch=4 \
+    --num_train_epoch=10 \
     --logging_step=-1 \
     --save_step=-1 \
     --output_dir=$OUTPUT_DIR
