@@ -127,8 +127,8 @@ def train(args: argparse.Namespace, train_dataloader, model: BertForNer, tokeniz
                 model_to_save.save_pretrained(output_dir)
                 torch.save(args, os.path.join(output_dir, "training_args.bin"))
                 tokenizer.save_vocabulary(output_dir)
-                torch.save(lr_scheduler.state_dict(), os.path.join(
-                    output_dir, "lr_scheduler.pt"))
+                torch.save(scheduler.state_dict(), os.path.join(
+                    output_dir, "scheduler.pt"))
         logger.info("\n")
         logger.info(
             f"Epoch {epoch+1}/{args.num_train_epoch}: loss value:{tr_loss/global_step}")

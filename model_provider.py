@@ -1,8 +1,7 @@
 import torch
-
+from config_provider import BertCrfConfig
 from torch import nn
 from transformers import BertPreTrainedModel, BertModel, BertForTokenClassification
-from transformers.modeling_outputs import TokenClassifierOutput
 from torch.nn import CrossEntropyLoss
 from losses.focal_loss import FocalLoss
 from losses.label_smoothing import LabelSmoothingCrossEntropy
@@ -60,6 +59,8 @@ class BertForNer(BertPreTrainedModel):
 
 
 class BertCrfForNer(BertPreTrainedModel):
+    config_class = BertCrfConfig
+
     def __init__(self, config) -> None:
         super(BertCrfForNer, self).__init__(config)
         self.num_labels = config.num_labels
