@@ -1,7 +1,7 @@
 import re
 import torch
 
-from transformers import Pipeline, BertTokenizer
+from transformers import Pipeline
 
 
 class BertCrfPipeline(Pipeline):
@@ -46,39 +46,39 @@ class BertCrfPipeline(Pipeline):
         idx = 0
         pred_label = []
 
-        while idx <len(output):
+        while idx < len(output):
             label = output[idx]
             if label != 'O':
                 label = label[2:]
-                start,end = offsets[idx]
-                while idx +1 <len(output) and output[idx +1 ] = f'I-{label}':
-                    _,end = offsets[idx+1]
-                    idx +=1
-                start , end = start.item(),end.item()
+                start, end = offsets[idx]
+                while idx + 1 < len(output) and output[idx + 1] == f'I-{label}':
+                    _, end = offsets[idx+1]
+                    idx += 1
+                start, end = start.item(), end.item()
                 word = sentences[start:end]
                 if label == "VER":
                     word = self._convert_to_version_range(word)
                 pred_label.append({
-                    "entity_group":label,
-                    "word":word,
-                    "start":start,
-                    "end":end,
+                    "entity_group": label,
+                    "word": word,
+                    "start": start,
+                    "end": end
                 })
 
             idx += 1
 
         return pred_label
 
-    def _convert_to_version_range(self,version:str):
+    def _convert_to_version_range(self, version: str):
         pattern = re.compile(r'\d+\.(?:\d+\.)*\d+(?:-\w+)?')
-        results = re.findall(pattern,version)
+        results = re.findall(pattern, version)
         v_range = version
-        if len(results)>0:
+        if len(results) > 0:
             if len(results) == 1:
                 v_range = f'(,{results[0]}]'
             if len(results) == 2:
-                v_range = f'[{results[0]},{results[1]}]'                
+                v_range = f'[{results[0]},{results[1]}]'
             if len(results) > 2:
                 t_range = ','.join(results)
-                v_range = f'[{t_range[:-1]}]'  
+                v_range = f'[{t_range[:-1]}]'
         return v_range
