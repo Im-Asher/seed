@@ -1,10 +1,13 @@
 service: "service.py:svc"
 labels:
-  owner: bentoml-team
+  owner: asher-wang
   stage: dev
 include:
 - "*.py"
+exclude:
+- "venv/"
 python:
-  packages:
-  - transformers
-  - torch
+  requirements_txt: "./requirements.txt"
+  index_url: "https://pypi.tuna.tsinghua.edu.cn/simple/"
+  trusted_host:
+  - "pypi.tuna.tsinghua.edu.cn"
