@@ -2,23 +2,28 @@ import pandas as pd
 import json
 from tqdm import tqdm
 
-output_path = '.\cve_description.txt'
-
-
-def json_to_text(json_path: str):
+def jsonl_to_json(filepath: str, to_dir: str, file_name='cve-500.json'):
     input_data = None
-    with open(json_path, 'r', encoding='utf-8') as f:
-        input_data = json.load(f)
     res = []
-    for item in input_data:
-        res.append(item['description'])
-    with open(output_path, 'a', encoding='utf-8') as f:
-        for desc in res:
-            f.write(desc)
-            f.write('\n')
-        
-    print('finished!')
+    with open(filepath, 'r', encoding='utf-8') as f:
+        for idx, line in tqdm(enumerate(f.read().split('\n'))):
+            if not line:
+                break
+            obj = json.loads(line)
+            id_ = obj['id']
+            sentence = obj['text']
+            labels = obj['label']
+            res.append({'id': id_,
+                        'sentence': sentence,
+                        'labels': [{"start": label[0],
+                                    "end":label[1],
+                                    "label":label[2]} for label in labels]})
+    to_path = to_dir + '/'+file_name
+    with open(to_path, 'wt', encoding='utf-8') as f:
+        json.dump(res, f)
+    print("Convert finished!")
 
 
 if __name__ == "__main__":
-    json_to_text('data/cve_description.json')
+    jsonl_to_json('data\datasets\cve_description\cve-500.jsonl',
+                  to_dir='data\datasets\cve_description')
