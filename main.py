@@ -13,7 +13,7 @@ from torch.utils.data import DataLoader
 from data.data_utils import collate_fn, load_data, id2label, label2id
 from model_provider import BertForNer, BertCrfForNer, BertMlpForNer
 from transformers import AutoConfig, AutoTokenizer, AdamW, get_scheduler
-from seqeval.metrics import classification_report,f1_score,accuracy_score,precision_score,recall_score
+from seqeval.metrics import classification_report, f1_score, accuracy_score, precision_score, recall_score
 from seqeval.scheme import IOB2
 from utils.commom import get_parser
 from torch.optim.lr_scheduler import LambdaLR
@@ -27,6 +27,7 @@ MODEL_CLASS = {
     'bert-mlp': (AutoConfig, BertMlpForNer, AutoTokenizer)
 }
 
+
 def get_linear_schedule_with_warmup(optimizer, num_warmup_steps, num_training_steps, last_epoch=-1):
     """ Create a schedule with a learning rate that decreases linearly after
     linearly increasing during a warmup period.
@@ -38,18 +39,19 @@ def get_linear_schedule_with_warmup(optimizer, num_warmup_steps, num_training_st
 
     return LambdaLR(optimizer, lr_lambda, last_epoch)
 
+
 def train(args: argparse.Namespace, train_dataloader, model: BertForNer, tokenizer, config):
-    # optimizer = AdamW(model.parameters(), lr=args.learning_rate)
-    # lr_scheduler = get_scheduler('linear', optimizer=optimizer,
-    #                              num_warmup_steps=0, num_training_steps=args.num_training_steps)
+
     global_step = 0
     tr_loss = 0.0
-    
+
     if args.max_steps > 0:
         t_total = args.max_steps
-        args.num_train_epoch = args.max_steps // (len(train_dataloader) // args.gradient_accumulation_steps) + 1
+        args.num_train_epoch = args.max_steps // (
+            len(train_dataloader) // args.gradient_accumulation_steps) + 1
     else:
-        t_total = len(train_dataloader) // args.gradient_accumulation_steps * args.num_train_epoch
+        t_total = len(
+            train_dataloader) // args.gradient_accumulation_steps * args.num_train_epoch
 
     no_decay = ["bias", "LayerNorm.weight"]
 
@@ -75,7 +77,8 @@ def train(args: argparse.Namespace, train_dataloader, model: BertForNer, tokeniz
     ]
 
     args.warmup_steps = int(t_total * args.warmup_proportion)
-    optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate, eps=args.adam_epsilon)
+    optimizer = AdamW(optimizer_grouped_parameters,
+                      lr=args.learning_rate, eps=args.adam_epsilon)
     scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=args.warmup_steps,
                                                 num_training_steps=t_total)
     # Show Training Parameters
@@ -90,7 +93,8 @@ def train(args: argparse.Namespace, train_dataloader, model: BertForNer, tokeniz
     progress_bar = tqdm(range(len(train_dataloader)), ncols=100)
 
     for epoch in range(args.num_train_epoch):
-        logger.info(f'Epoch {epoch +1}/{args.num_train_epoch}\n-------------------')
+        logger.info(
+            f'Epoch {epoch +1}/{args.num_train_epoch}\n-------------------')
         progress_bar.reset()
         progress_bar.set_description(f'loss value:{0:>7f}')
 
@@ -100,6 +104,8 @@ def train(args: argparse.Namespace, train_dataloader, model: BertForNer, tokeniz
         finish_batch_num = epoch * len(train_dataloader)
 
         for batch, (feature, label) in enumerate(train_dataloader, start=1):
+            sentences = feature.pop('sentences')
+
             feature, label = feature.to(args.device), label.to(args.device)
 
             loss, _ = model(feature, label)
@@ -127,8 +133,8 @@ def train(args: argparse.Namespace, train_dataloader, model: BertForNer, tokeniz
                 model_to_save.save_pretrained(output_dir)
                 torch.save(args, os.path.join(output_dir, "training_args.bin"))
                 tokenizer.save_vocabulary(output_dir)
-                torch.save(lr_scheduler.state_dict(), os.path.join(
-                    output_dir, "lr_scheduler.pt"))
+                torch.save(scheduler.state_dict(), os.path.join(
+                    output_dir, "scheduler.pt"))
         logger.info("\n")
         logger.info(
             f"Epoch {epoch+1}/{args.num_train_epoch}: loss value:{tr_loss/global_step}")
@@ -144,37 +150,34 @@ def evaluate(config, model: BertForNer, eval_dataloader: DataLoader):
     model.eval()
 
     logger.info("start evaluate model...")
-
+    sentences = []
     with torch.no_grad():
         progress_bar = tqdm(range(len(eval_dataloader)))
         for feature, label in eval_dataloader:
+            sentences += feature.pop('sentences')
             feature, label = feature.to(args.device), label.to(args.device)
-            loss,pred = model(feature,label)
-            masks = torch.tensor(feature['attention_mask'],dtype=torch.uint8)
-            tags = model.crf.decode(pred,masks)
+            loss, pred = model(feature, label)
+            masks = torch.tensor(feature['attention_mask'], dtype=torch.uint8)
+            tags = model.crf.decode(pred, masks)
             predictions = pred[0].argmax(dim=-1).cpu().numpy().tolist()
             labels = label.cpu().numpy().tolist()
-            # true_labels += [[config.id2label[int(l)]
-            #                  for l in label if l !=-100] for label in labels]
+
             true_labels += [[config.id2label[int(l)]
-                             for m,l in zip(mask,label) if m !=0] for mask,label in zip(masks,labels) ]
-            # true_predictions += [
-            #     [config.id2label[int(p)] for (p, l) in zip(
-            #         prediction, label) if l != -100]
-            #     for prediction, label in zip(predictions, labels)
-            # ]
+                             for m, l in zip(mask, label) if m != 0] for mask, label in zip(masks, labels)]
+
             true_predictions += [
                 [config.id2label[int(p)] for (p, l) in zip(
                     prediction, label) if l != -100]
                 for prediction, label in zip(tags, labels)
             ]
             progress_bar.update(1)
+    fail_sentences = find_failure_sentences(sentences,true_labels,true_predictions)
     logger.info(classification_report(true_labels,
-          true_predictions, mode='strict', scheme=IOB2))
-    f1_value = f1_score(true_labels,true_predictions)
-    precision_value = precision_score(true_labels,true_predictions)
-    recall_value = recall_score(true_labels,true_predictions)
-    accuracy_value = accuracy_score(true_labels,true_predictions)
+                                      true_predictions, mode='strict', scheme=IOB2))
+    f1_value = f1_score(true_labels, true_predictions)
+    precision_value = precision_score(true_labels, true_predictions)
+    recall_value = recall_score(true_labels, true_predictions)
+    accuracy_value = accuracy_score(true_labels, true_predictions)
     print(f'f1_value:{f1_value},precision_value:{precision_value},recall_value:{recall_value},accuracy_value:{accuracy_value}')
     return f1_value
 
@@ -243,6 +246,18 @@ def predict(args: argparse.Namespace, model: BertForNer, predict_dataloader: Dat
             f.write(json.dumps(exapmle_result, ensure_ascii=False) + '\n')
 
 
+def find_failure_sentences(sentences: list, true_labels: list, true_predictions: list):
+    fail_sentences = []
+    idx = 0
+    for l, p in zip(true_labels, true_predictions):
+        if l != p:
+            fail_sentences.append(sentences[idx])
+        idx += 1
+    with open ('failure_sentences.txt','w',encoding='utf-8') as f:
+        f.writelines(fail_sentences)
+    return fail_sentences
+
+
 if __name__ == "__main__":
 
     args = get_parser().parse_args()
@@ -309,7 +324,7 @@ if __name__ == "__main__":
                 checkpoint, config=config).to(args.device)
             result = evaluate(config=config, model=model,
                               eval_dataloader=eval_dataloader)
-            results.update({checkpoint:result})
+            results.update({checkpoint: result})
         output_eval_results = os.path.join(args.output_dir, "eval_resutls.txt")
 
         with open(output_eval_results, 'w') as f:

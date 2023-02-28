@@ -33,6 +33,7 @@ def collate_fn(batch_samples):
 
     batch_inputs = tokenizer(batch_sentences, padding=True,
                              truncation=True, return_tensors='pt')
+    batch_inputs['sentences'] = batch_sentences
     batch_label = np.zeros(batch_inputs['input_ids'].shape, dtype=int)
 
     for idx, sentence in enumerate(batch_sentences):
