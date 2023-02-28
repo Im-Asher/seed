@@ -4,6 +4,8 @@ import datasets
 from datasets import GeneratorBasedBuilder
 
 _DOWNLOAD_URL = 'data\datasets\cve_description\cve-500.jsonl'
+_DOWNLOAD_TEST_URL = 'data\datasets\cve_description\cve-500-test.jsonl'
+_DOWNLOAD_TRAIN_URL = 'data\datasets\cve_description\cve-500-train.jsonl'
 
 
 class CveDescriptionConfig(datasets.BuilderConfig):
@@ -33,7 +35,11 @@ class CveDescription(GeneratorBasedBuilder):
                 {
                     "id": datasets.Value("string"),
                     "sentence": datasets.Value("string"),
-                    "label": datasets.Sequence(datasets.Value("string"))
+                    "labels": datasets.Sequence({
+                        "start": datasets.Value("int32"),
+                        "end": datasets.Value("int32"),
+                        "label": datasets.Value("string")
+                    })
                 }
             )
         )
@@ -42,9 +48,20 @@ class CveDescription(GeneratorBasedBuilder):
 
     def _split_generators(self, dl_manager: datasets.DownloadManager):
 
-        return [datasets.SplitGenerator(name=datasets.Split.TRAIN, gen_kwargs={
-            "filepath": _DOWNLOAD_URL,
-        },),]
+        return [
+            datasets.SplitGenerator(
+                name=datasets.Split.TRAIN,
+                gen_kwargs={
+                    "filepath": _DOWNLOAD_TRAIN_URL
+                }
+            ),
+            datasets.SplitGenerator(
+                name=datasets.Split.TEST,
+                gen_kwargs={
+                    "filepath": _DOWNLOAD_TEST_URL
+                }
+            )
+        ]
 
     def _generate_examples(self, filepath):
 
@@ -55,9 +72,14 @@ class CveDescription(GeneratorBasedBuilder):
                 obj = json.loads(line)
                 id_ = obj['id']
                 sentence = obj['text']
-                label = obj['label']
+                labels = []
+                
+                for label in obj['label']:
+                    labels.append(
+                        {"start": label[0], "end": label[1], "label": label[2]})
+                    
                 yield id_, {
                     "id": id_,
                     "sentence": sentence,
-                    "label": label
+                    "labels": labels
                 }
