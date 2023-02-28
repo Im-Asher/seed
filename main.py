@@ -253,8 +253,10 @@ def find_failure_sentences(sentences: list, true_labels: list, true_predictions:
         if l != p:
             fail_sentences.append(sentences[idx])
         idx += 1
-    with open ('failure_sentences.txt','w',encoding='utf-8') as f:
-        f.writelines(fail_sentences)
+    with open ('failure_sentences.txt','a+',encoding='utf-8') as f:
+        for line in fail_sentences:
+            f.write(line)
+            f.write('\n')
     return fail_sentences
 
 

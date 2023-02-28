@@ -16,7 +16,7 @@ python3 main.py \
     --data_dir=$DATA_DIR/${TASK_NAME}/ \
     --learning_rate=2e-5 \
     --crf_learning_rate=1e-3 \
-    --num_train_epoch=10 \
+    --num_train_epoch=50 \
     --logging_step=-1 \
     --save_step=-1 \
     --output_dir=$OUTPUT_DIR
