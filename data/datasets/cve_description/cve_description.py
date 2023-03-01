@@ -28,23 +28,19 @@ class CveDescription(GeneratorBasedBuilder):
     ]
 
     def _info(self) -> datasets.DatasetInfo:
+        features = {}
+        features['id'] = datasets.Value("string")
+        features['sentence'] = datasets.Value("string")
+        features['labels'] = datasets.features.Sequence({
+            "start": datasets.Value("int32"),
+            "end": datasets.Value("int32"),
+            "label": datasets.Value("string")
+        })
 
-        information = datasets.DatasetInfo(
+        return datasets.DatasetInfo(
             description=self._DESCRIPTION,
-            features=datasets.Features(
-                {
-                    "id": datasets.Value("string"),
-                    "sentence": datasets.Value("string"),
-                    "labels": datasets.Sequence({
-                        "start": datasets.Value("int32"),
-                        "end": datasets.Value("int32"),
-                        "label": datasets.Value("string")
-                    })
-                }
-            )
+            features=datasets.Features(features)
         )
-
-        return information
 
     def _split_generators(self, dl_manager: datasets.DownloadManager):
 
@@ -73,11 +69,11 @@ class CveDescription(GeneratorBasedBuilder):
                 id_ = obj['id']
                 sentence = obj['text']
                 labels = []
-                
+
                 for label in obj['label']:
                     labels.append(
                         {"start": label[0], "end": label[1], "label": label[2]})
-                    
+
                 yield id_, {
                     "id": id_,
                     "sentence": sentence,

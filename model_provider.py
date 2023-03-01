@@ -1,4 +1,5 @@
 import torch
+from typing import Optional
 from config_provider import BertCrfConfig
 from torch import nn
 from transformers import BertPreTrainedModel, BertModel, BertForTokenClassification
@@ -71,15 +72,18 @@ class BertCrfForNer(BertPreTrainedModel):
         self.loss_type = config.loss_type
         self.init_weights()
 
-    def forward(self, feature, labels=None):
-        outputs = self.bert(**feature)
+    def forward(self, input_ids: Optional[torch.Tensor] = None,
+                attention_mask: Optional[torch.Tensor] = None,
+                token_type_ids: Optional[torch.Tensor] = None,
+                labels=None):
+        outputs = self.bert(input_ids, attention_mask, token_type_ids)
         sequence_output = outputs.last_hidden_state
         sequence_output = self.dropout(sequence_output)
         logits = self.classifier(sequence_output)
         outputs = (logits,)
         if labels is not None:
             active_mask = torch.tensor(
-                feature.data['attention_mask'], dtype=torch.uint8)
+                attention_mask, dtype=torch.uint8)
             loss = self.crf(emissions=logits, tags=labels, mask=active_mask)
-            outputs = (-1 * loss,) +outputs
+            outputs = (-1 * loss,) + outputs
         return outputs
