@@ -105,8 +105,6 @@ TASK_DEFINITION = {
 }
 SUPPORTED_TASKS[TASK_NAME] = TASK_DEFINITION
 
-model = BertCrfForNer.from_pretrained("")
-tokenizer = AutoTokenizer.from_pretrained("")
 
 sv_extractor = pipeline(
     task=TASK_NAME,

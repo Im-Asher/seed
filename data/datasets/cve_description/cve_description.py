@@ -3,9 +3,9 @@ import datasets
 
 from datasets import GeneratorBasedBuilder
 
-_DOWNLOAD_URL = 'data\datasets\cve_description\cve-500.jsonl'
-_DOWNLOAD_TEST_URL = 'data\datasets\cve_description\cve-500-test.jsonl'
-_DOWNLOAD_TRAIN_URL = 'data\datasets\cve_description\cve-500-train.jsonl'
+_DOWNLOAD_URL = './data/datasets/cve_description/cve-500.jsonl'
+_DOWNLOAD_TEST_URL = './data/datasets/cve_description/cve-500-test.jsonl'
+_DOWNLOAD_TRAIN_URL = './data/datasets/cve_description/cve-500-train.jsonl'
 
 
 class CveDescriptionConfig(datasets.BuilderConfig):
