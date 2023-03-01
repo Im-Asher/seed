@@ -78,8 +78,8 @@ small_train_dataset = tokenized_datasets["train"].shuffle(
 small_eval_dataset = tokenized_datasets["test"].shuffle(
     seed=42).select(range(100))
 
-config = BertCrfConfig.from_pretrained('./model_cache/bert-crf')
-model = BertCrfForNer.from_pretrained("./model_cache/bert-crf", config=config)
+config = BertCrfConfig.from_pretrained('bert-base-uncased')
+model = BertCrfForNer.from_pretrained('bert-base-uncased', config=config)
 
 training_args = TrainingArguments(
     output_dir="model_cache/bert-crf", evaluation_strategy="epoch")
