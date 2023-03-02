@@ -4,6 +4,7 @@ labels:
   stage: dev
 include:
 - "*.py"
+- "model_cache"
 exclude:
 - "venv/"
 python:
