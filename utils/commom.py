@@ -11,8 +11,8 @@ PREDICT_FILE = DATA_DIR + TASK_NAME + '/cve-500.jsonl'
 
 CHECK_POINT = 'bert-base-uncased'
 
-OUTPUR_DIR = './model_cache/'
-PREDICT_RESULT_DIR = OUTPUR_DIR+'predict_result.json'
+OUTPUT_DIR = './model_cache/'
+PREDICT_RESULT_DIR = OUTPUT_DIR+'predict_result.json'
 
 logger = logging.getLogger()
 
@@ -59,7 +59,7 @@ def get_parser():
                         type=str,  help='Predict file for model predict')
     parser.add_argument('--model_type', default="bert-crf",
                         type=str,  help="Please select model type!")
-    parser.add_argument('--output_dir', default=OUTPUR_DIR, type=str,
+    parser.add_argument('--output_dir', default=OUTPUT_DIR, type=str,
                         help='The output directory where the model trained will be written ')
     parser.add_argument('--predict_result_dir', default=PREDICT_RESULT_DIR, type=str,
                         help='The predict result file path when do predict')
@@ -72,7 +72,7 @@ def get_parser():
                         help='Total number of training epochs to perform')
     parser.add_argument('--max_train_step', default=8600,
                         type=int, help='Max step for model training')
-    parser.add_argument('--learning_rate', default=2e-5, type=float,
+    parser.add_argument('--learning_rate', default=5e-5, type=float,
                         help='Default learning rate for model training.')
     parser.add_argument("--adam_epsilon", default=1e-8, type=float,
                         help="Epsilon for Adam optimizer.")  
@@ -96,7 +96,7 @@ def get_parser():
                         help="If > 0: set total number of training steps to perform. Override num_train_epochs.", )
             
     # runing mode
-    parser.add_argument('--do_train', default=False, action='store_true',
+    parser.add_argument('--do_train', default=True, action='store_true',
                         help='Whether to run train process')
     parser.add_argument('--do_eval', default=True, action='store_true',
                         help='Whether to run evaluate process')

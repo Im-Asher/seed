@@ -1,5 +1,6 @@
 import re
 import torch
+import numpy as np
 
 from transformers import Pipeline
 
@@ -25,42 +26,53 @@ class BertCrfPipeline(Pipeline):
     def _forward(self, model_inputs):
         sentences = model_inputs.pop("sentences")
         tokens = model_inputs.pop("tokens")
-        offsets = model_inputs.pop("offsets_mapping")
+        offsets = model_inputs.pop("offset_mapping")
 
-        outputs = self.model(model_inputs)
+        outputs = self.model(**model_inputs)
 
         logits = outputs[0]
+
+        probabilities = torch.nn.functional.softmax(
+            logits, dim=-1)[0].cpu().numpy().tolist()
+
         mask = torch.tensor(model_inputs["attention_mask"], dtype=torch.uint8)
         tags = self.model.crf.decode(logits, mask)
 
         output = tags[0]
         output = [self.model.config.id2label[x] for x in output]
 
-        return output, tokens, sentences, offsets[0]
+        return output, sentences, offsets[0], probabilities
 
     def postprocess(self, model_outputs):
         # decode -> BIO
         # output -> {entity\label\start\end}
-        output, tokens, sentences, offsets = model_outputs
+        output,  sentences, offsets, probabilities = model_outputs
 
         idx = 0
         pred_label = []
 
         while idx < len(output):
-            label = output[idx]
+            label, tag = output[idx], output[idx]
+
             if label != 'O':
                 label = label[2:]
                 start, end = offsets[idx]
+                all_scores = [probabilities[idx]
+                              [self.model.config.label2id[tag]]]
                 while idx + 1 < len(output) and output[idx + 1] == f'I-{label}':
+                    all_scores.append(
+                        probabilities[idx+1][self.model.config.label2id[tag]])
                     _, end = offsets[idx+1]
                     idx += 1
                 start, end = start.item(), end.item()
                 word = sentences[start:end]
+                score = np.mean(all_scores).item()
                 if label == "VER":
                     word = self._convert_to_version_range(word)
                 pred_label.append({
                     "entity_group": label,
                     "word": word,
+                    "score":score,
                     "start": start,
                     "end": end
                 })
