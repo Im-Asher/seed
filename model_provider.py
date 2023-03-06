@@ -84,6 +84,6 @@ class BertCrfForNer(BertPreTrainedModel):
         if labels is not None:
             active_mask = torch.tensor(
                 attention_mask, dtype=torch.uint8)
-            loss = self.crf(emissions=logits, tags=labels, mask=active_mask,reduction='mean')
+            loss = self.crf(emissions=logits, tags=labels, mask=active_mask,reduction='token_mean')
             outputs = (-1 * loss,) + outputs
         return outputs
