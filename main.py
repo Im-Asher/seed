@@ -183,7 +183,7 @@ def evaluate(config, model: BertForNer, eval_dataloader: DataLoader):
     precision_value = precision_score(true_labels, true_predictions)
     recall_value = recall_score(true_labels, true_predictions)
     accuracy_value = accuracy_score(true_labels, true_predictions)
-    print(f'f1_value:{f1_value},precision_value:{precision_value},recall_value:{recall_value},accuracy_value:{accuracy_value}')
+    logger.info(f'f1_value:{f1_value},precision_value:{precision_value},recall_value:{recall_value},accuracy_value:{accuracy_value}')
     return f1_value
 
 
@@ -289,7 +289,7 @@ if __name__ == "__main__":
     dataset_all = load_data(args.train_file)
     train_index = math.ceil(len(dataset_all)*0.8)
     eval_index = len(dataset_all) - train_index
-    
+
     if args.do_train:
         train_dataloader = DataLoader(dataset_all[
             :train_index], batch_size=args.batch_size, shuffle=True, collate_fn=collate_fn)
