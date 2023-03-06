@@ -20,8 +20,9 @@ class BertCrfConfig(PretrainedConfig):
                  position_embedding_type="absolute",
                  use_cache=True,
                  classifier_dropout=None,
-                 loss_type= 'ce',
-                 tokenizer_class="bert", **kwargs):
+                 loss_type='ce',
+                 tokenizer_class="bert",
+                 reduction='sum', **kwargs):
         super().__init__(pad_token_id=pad_token_id, **kwargs)
         self.vocab_size = vocab_size
         self.hidden_size = hidden_size
@@ -40,4 +41,4 @@ class BertCrfConfig(PretrainedConfig):
         self.classifier_dropout = classifier_dropout
         self.tokenizer_class = tokenizer_class
         self.loss_type = loss_type
-
+        self.reduction = reduction

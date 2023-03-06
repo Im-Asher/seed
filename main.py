@@ -274,6 +274,7 @@ if __name__ == "__main__":
     config = config_class.from_pretrained(args.name_or_path)
     config.id2label = id2label
     config.label2id = label2id
+    config.reduction = args.reduction
     config.loss_type = args.loss_type
 
     model = model_class.from_pretrained(

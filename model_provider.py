@@ -69,7 +69,7 @@ class BertCrfForNer(BertPreTrainedModel):
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
         self.classifier = nn.Linear(config.hidden_size, config.num_labels)
         self.crf = CRF(num_tags=config.num_labels, batch_first=True)
-        self.loss_type = config.loss_type
+        self.reduction = config.reduction
         self.init_weights()
 
     def forward(self, input_ids: Optional[torch.Tensor] = None,
@@ -84,6 +84,7 @@ class BertCrfForNer(BertPreTrainedModel):
         if labels is not None:
             active_mask = torch.tensor(
                 attention_mask, dtype=torch.uint8)
-            loss = self.crf(emissions=logits, tags=labels, mask=active_mask,reduction='token_mean')
+            loss = self.crf(emissions=logits, tags=labels,
+                            mask=active_mask, reduction=self.reduction)
             outputs = (-1 * loss,) + outputs
         return outputs

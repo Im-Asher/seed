@@ -94,6 +94,8 @@ def get_parser():
                         help="Number of updates steps to accumulate before performing a backward/update pass.", )
     parser.add_argument("--max_steps", default=-1, type=int,
                         help="If > 0: set total number of training steps to perform. Override num_train_epochs.", )
+    parser.add_argument("--reduction", default="sum", type=str,
+                        help="CRF reduction ['sum','mean','token_mean']", )
             
     # runing mode
     parser.add_argument('--do_train', default=True, action='store_true',
