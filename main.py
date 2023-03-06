@@ -6,6 +6,7 @@ import torch.cuda
 import numpy as np
 import json
 import time
+import math
 
 from tqdm import tqdm
 from utils.commom import init_logger, logger
@@ -285,9 +286,13 @@ if __name__ == "__main__":
 
     logger.info("Training/evaluation parameters %s", args)
 
+    dataset_all = load_data(args.train_file)
+    train_index = math.ceil(len(dataset_all)*0.8)
+    eval_index = len(dataset_all) - train_index
+    
     if args.do_train:
-        train_dataloader = DataLoader(load_data(args.train_file)[
-            :400], batch_size=args.batch_size, shuffle=True, collate_fn=collate_fn)
+        train_dataloader = DataLoader(dataset_all[
+            :train_index], batch_size=args.batch_size, shuffle=True, collate_fn=collate_fn)
         train(args=args, train_dataloader=train_dataloader,
               model=model, tokenizer=tokenizer, config=config)
 
@@ -308,8 +313,8 @@ if __name__ == "__main__":
         checkpoints = [args.output_dir]
         logger.info("Evaluate the following checkpoints: %s", checkpoints)
 
-        eval_dataloader = DataLoader(load_data(args.train_file)[
-                                     400:], batch_size=args.batch_size, shuffle=True, collate_fn=collate_fn)
+        eval_dataloader = DataLoader(dataset_all[
+                                     train_index:], batch_size=args.batch_size, shuffle=True, collate_fn=collate_fn)
 
         for checkpoint in checkpoints:
             config = config_class.from_pretrained(checkpoint)
