@@ -5,9 +5,9 @@ from pathlib import Path
 
 TASK_NAME = 'SV'
 DATA_DIR = './data/datasets/'
-TRAIN_FILE = DATA_DIR + TASK_NAME + '/cve-500.jsonl'
-EVAL_FILE = DATA_DIR + TASK_NAME + '/cve-500.jsonl'
-PREDICT_FILE = DATA_DIR + TASK_NAME + '/cve-500.jsonl'
+TRAIN_FILE = DATA_DIR + TASK_NAME + '/cve-1000.jsonl'
+EVAL_FILE = DATA_DIR + TASK_NAME + '/cve-1000.jsonl'
+PREDICT_FILE = DATA_DIR + TASK_NAME + '/cve-1000.jsonl'
 
 CHECK_POINT = 'bert-base-uncased'
 
