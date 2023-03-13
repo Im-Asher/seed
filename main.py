@@ -23,6 +23,8 @@ from torch.optim.lr_scheduler import LambdaLR
 
 logger = logging.getLogger(__name__)
 
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:128"
+
 MODEL_CLASS = {
     'bert': (AutoConfig, BertForNer, AutoTokenizer),
     'bert-crf': (BertCrfConfig, BertCrfForNer, AutoTokenizer),
