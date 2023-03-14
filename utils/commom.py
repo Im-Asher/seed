@@ -84,7 +84,9 @@ def get_parser():
                         help='Training step.')
     parser.add_argument('--logging_step', default=1000, type=int,
                         help="Log checkpoint every X updates steps")
-    parser.add_argument('--save_step', default=1000, type=int,
+    parser.add_argument('--save_step', default=-1, type=int,
+                        help="Save checkpoint every X updates steps")
+    parser.add_argument('--eval_step', default=100, type=int,
                         help="Save checkpoint every X updates steps")
     parser.add_argument('--loss_type', default='ce', type=str,
                         help="loss function type ('lsr', 'focal', 'ce')")
@@ -94,13 +96,13 @@ def get_parser():
                         help="Number of updates steps to accumulate before performing a backward/update pass.", )
     parser.add_argument("--max_steps", default=-1, type=int,
                         help="If > 0: set total number of training steps to perform. Override num_train_epochs.", )
-    parser.add_argument("--reduction", default="sum", type=str,
+    parser.add_argument("--reduction", default="token_mean", type=str,
                         help="CRF reduction ['sum','mean','token_mean']", )
             
     # runing mode
     parser.add_argument('--do_train', default=True, action='store_true',
                         help='Whether to run train process')
-    parser.add_argument('--do_eval', default=True, action='store_true',
+    parser.add_argument('--do_eval', default=False, action='store_true',
                         help='Whether to run evaluate process')
     parser.add_argument('--do_predict', default=False, action='store_true',
                         help='Whether to run predict process')
