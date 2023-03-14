@@ -106,6 +106,8 @@ def train(args: argparse.Namespace, train_dataloader, model: BertForNer, tokeniz
     logger.info("Training epochs = %d", args.num_train_epoch)
     logger.info("Learining rate = %f", args.learning_rate)
     logger.info("Data batch size = %d", args.batch_size)
+    logger.info("CRF reduction tpye = %s", args.reduction)
+
     logger.info("***** Training Fun *****")
 
     progress_bar = tqdm(range(len(train_dataloader)), ncols=100)
