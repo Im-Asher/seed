@@ -86,7 +86,7 @@ def get_parser():
                         help="Log checkpoint every X updates steps")
     parser.add_argument('--save_step', default=-1, type=int,
                         help="Save checkpoint every X updates steps")
-    parser.add_argument('--eval_step', default=100, type=int,
+    parser.add_argument('--eval_step', default=1000, type=int,
                         help="Save checkpoint every X updates steps")
     parser.add_argument('--loss_type', default='ce', type=str,
                         help="loss function type ('lsr', 'focal', 'ce')")
