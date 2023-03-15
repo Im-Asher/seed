@@ -72,7 +72,7 @@ class BertCrfPipeline(Pipeline):
                 pred_label.append({
                     "entity_group": label,
                     "word": word,
-                    "score":score,
+                    "score": score,
                     "start": start,
                     "end": end
                 })
@@ -94,3 +94,32 @@ class BertCrfPipeline(Pipeline):
                 t_range = ','.join(results)
                 v_range = f'[{t_range[:-1]}]'
         return v_range
+
+    def _convert_to_version_range_v2(self, version: str):
+        one_left = ['start']
+        one_right = ['prior', 'before', 'through', 'to', 'up', 'earlier']
+        two_nochange = ['prior', 'from', 'up', 'start', 'before']
+
+        version_pattern = r'\d+\.\d+(?:\.\d+)?(?:\w+|-\w+)?'
+
+        version_intervals = [(match.group(), match.start(), match.end())
+                             for match in re.finditer(version_pattern, version)]
+        
+        if len(version_intervals) > 0:
+            if len(version_intervals) == 1:
+                for w in one_left:
+                    s = version.find(w)
+                    if s != -1:
+                        return f"[{version_intervals.get(0)[0]},)","RANGE"
+                for w in one_right:
+                    s = version.find(w)
+                    if s != -1:
+                        return f"(,{version_intervals.get(0)[0]}]","RANGE"
+                    
+                return f'[{version_intervals.get(0)[0]}]',"LIST"
+        
+            if len(version_intervals) == 2:
+                pass
+
+            if len(version_intervals) >2:
+                pass
