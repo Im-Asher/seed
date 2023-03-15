@@ -118,12 +118,13 @@ def train(args: argparse.Namespace, train_dataloader, model: BertForNer, tokeniz
         progress_bar.reset()
         progress_bar.set_description(f'loss value:{0:>7f}')
 
-        model.train()
-
         n_epoch_total_loss = 0
         finish_batch_num = epoch * len(train_dataloader)
 
         for batch, (feature, label) in enumerate(train_dataloader, start=1):
+           
+            model.train()
+
             feature, label = feature.to(args.device), label.to(args.device)
 
             loss, _ = model(labels=label, **feature)
