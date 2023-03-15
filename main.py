@@ -159,7 +159,7 @@ def train(args: argparse.Namespace, train_dataloader, model: BertForNer, tokeniz
                 if max_precision < results[1]:
                     max_precision = results[1]
                     save_model(model,args)
-                    
+                model.train()
         logger.info("\n")
         logger.info(
             f"Epoch {epoch+1}/{args.num_train_epoch}: loss value:{tr_loss/global_step}")
