@@ -8,7 +8,7 @@ from transformers import AutoTokenizer, AutoConfig, AutoModel
 
 from transformers import AutoTokenizer 
 
-NAME_OR_PATH = "model_cache/bert-crf"
+NAME_OR_PATH = "model_cache/bert-crf_p88"
 BERT_TOKENIZER = "bert-base-uncased"
 TASK_NAME = "sv-ner-task"
 

@@ -67,11 +67,13 @@ class BertCrfPipeline(Pipeline):
                 start, end = start.item(), end.item()
                 word = sentences[start:end]
                 score = np.mean(all_scores).item()
+                l_type = label
                 if label == "VER":
-                    word = self._convert_to_version_range(word)
+                    word,l_type = self._convert_to_version_range_v2(word)
                 pred_label.append({
                     "entity_group": label,
                     "word": word,
+                    "type":l_type,
                     "score": score,
                     "start": start,
                     "end": end
@@ -96,30 +98,38 @@ class BertCrfPipeline(Pipeline):
         return v_range
 
     def _convert_to_version_range_v2(self, version: str):
-        one_left = ['start']
+        one_left = ['start','from']
         one_right = ['prior', 'before', 'through', 'to', 'up', 'earlier']
         two_nochange = ['prior', 'from', 'up', 'start', 'before']
-
+        v_range = []
+        t_version = version.lower()
         version_pattern = r'\d+\.\d+(?:\.\d+)?(?:\w+|-\w+)?'
 
         version_intervals = [(match.group(), match.start(), match.end())
                              for match in re.finditer(version_pattern, version)]
         
-        if len(version_intervals) > 0:
-            if len(version_intervals) == 1:
-                for w in one_left:
-                    s = version.find(w)
-                    if s != -1:
-                        return f"[{version_intervals.get(0)[0]},)","RANGE"
-                for w in one_right:
-                    s = version.find(w)
-                    if s != -1:
-                        return f"(,{version_intervals.get(0)[0]}]","RANGE"
-                    
-                return f'[{version_intervals.get(0)[0]}]',"LIST"
-        
-            if len(version_intervals) == 2:
-                pass
+        v_range = [v[0] for v in version_intervals]
 
-            if len(version_intervals) >2:
-                pass
+        if len(v_range) > 0:
+            if len(v_range) == 1:
+                for w in one_left:
+                    s = t_version.find(w)
+                    if s != -1:
+                        return f"[{v_range[0]},)", "RANGE"
+                for w in one_right:
+                    s = t_version.find(w)
+                    if s != -1:
+                        return f"(,{v_range[0]}]", "RANGE"
+
+                return f'[{v_range[0]}]', "LIST"
+
+            if len(v_range) == 2:
+                for w in two_nochange:
+                    s = t_version.find(w)
+                    if s != -1:
+                        return f"[{v_range[0]},{v_range[1]}]","RANGE"
+                return f"[{v_range[0]},{v_range[1]}]","LIST"
+
+            if len(v_range) > 2:
+                return f"{v_range}","LIST"
+
