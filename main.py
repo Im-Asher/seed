@@ -17,7 +17,7 @@ from config_provider import BertCrfConfig
 from transformers import AutoConfig, AutoTokenizer, AdamW, get_scheduler
 from seqeval.metrics import classification_report, f1_score, accuracy_score, precision_score, recall_score
 from seqeval.scheme import IOB2
-from utils.commom import get_parser
+from utils.commom import get_parser,seed_everything
 from torch.optim.lr_scheduler import LambdaLR
 
 max_precision = 0
@@ -32,7 +32,8 @@ MODEL_CLASS = {
     'bert-mlp': (AutoConfig, BertMlpForNer, AutoTokenizer)
 }
 
-def save_model(model,args):
+
+def save_model(model, args):
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
     logger.info("Saving model checkpoint to {}".format(args.output_dir))
@@ -93,6 +94,7 @@ def train(args: argparse.Namespace, train_dataloader, model: BertForNer, tokeniz
         {'params': [p for n, p in linear_param_optimizer if any(nd in n for nd in no_decay)], 'weight_decay': 0.0,
          'lr': args.crf_learning_rate}
     ]
+    seed_everything(args.seed)
 
     args.warmup_steps = int(t_total * args.warmup_proportion)
     optimizer = AdamW(optimizer_grouped_parameters,
@@ -122,7 +124,7 @@ def train(args: argparse.Namespace, train_dataloader, model: BertForNer, tokeniz
         finish_batch_num = epoch * len(train_dataloader)
 
         for batch, (feature, label) in enumerate(train_dataloader, start=1):
-           
+
             model.train()
 
             feature, label = feature.to(args.device), label.to(args.device)
@@ -154,12 +156,12 @@ def train(args: argparse.Namespace, train_dataloader, model: BertForNer, tokeniz
                 tokenizer.save_vocabulary(output_dir)
                 torch.save(scheduler.state_dict(), os.path.join(
                     output_dir, "scheduler.pt"))
-                
-            if args.eval_step >0 and global_step % args.eval_step == 0:
-                results = evaluate(args=args,config=config, model=model)
+
+            if args.eval_step > 0 and global_step % args.eval_step == 0:
+                results = evaluate(args=args, config=config, model=model)
                 if max_precision < results[1]:
                     max_precision = results[1]
-                    save_model(model,args)
+                    save_model(model, args)
                 model.train()
         logger.info("\n")
         logger.info(
@@ -170,15 +172,15 @@ def train(args: argparse.Namespace, train_dataloader, model: BertForNer, tokeniz
     return global_step, tr_loss / global_step
 
 
-def evaluate(args,config, model: BertForNer):
+def evaluate(args, config, model: BertForNer):
     true_labels, true_predictions = [], []
 
     dataset_all = load_data(args.train_file)
 
     train_index = math.ceil(len(dataset_all)*0.8)
-    
+
     eval_dataloader = DataLoader(dataset_all[
-                                     train_index:], batch_size=args.batch_size, shuffle=True, collate_fn=collate_fn)
+        train_index:], batch_size=args.batch_size, shuffle=True, collate_fn=collate_fn)
 
     model.eval()
 
@@ -312,6 +314,8 @@ if __name__ == "__main__":
         args.name_or_path, do_lower_case=True)
 
     logger.info("Training/evaluation parameters %s", args)
+    
+    seed_everything(args.seed)
 
     dataset_all = load_data(args.train_file)
     train_index = math.ceil(len(dataset_all)*0.8)
@@ -322,11 +326,11 @@ if __name__ == "__main__":
             :train_index], batch_size=args.batch_size, shuffle=True, collate_fn=collate_fn)
         train(args=args, train_dataloader=train_dataloader,
               model=model, tokenizer=tokenizer, config=config)
-        results = evaluate(args=args,config=config,model=model)
-        
+        results = evaluate(args=args, config=config, model=model)
+
         # Save trained model/tokenizer/training parameters
         if max_precision < results[1]:
-            save_model(model,args)
+            save_model(model, args)
 
     results = {}
     if args.do_eval:
@@ -339,7 +343,7 @@ if __name__ == "__main__":
             config = config_class.from_pretrained(checkpoint)
             model = model_class.from_pretrained(
                 checkpoint, config=config).to(args.device)
-            result = evaluate(args=args,config=config, model=model)
+            result = evaluate(args=args, config=config, model=model)
             results.update({checkpoint: result})
         output_eval_results = os.path.join(args.output_dir, "eval_resutls.txt")
 

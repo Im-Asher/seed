@@ -1,5 +1,9 @@
+import os
+import torch
+import random
 import logging
 import argparse
+import numpy as np
 
 from pathlib import Path
 
@@ -40,6 +44,22 @@ def init_logger(log_file=None, log_file_level=logging.NOTSET):
         logger.addHandler(file_handler)
     return logger
 
+def seed_everything(seed=1029):
+    '''
+    设置整个开发环境的seed
+    :param seed:
+    :param device:
+    :return:
+    '''
+    random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    # some cudnn methods can be random even after fixing the seed
+    # unless you tell it to be deterministic
+    torch.backends.cudnn.deterministic = True
 
 def get_parser():
     parser = argparse.ArgumentParser('NLP model parameter setting.')
@@ -98,7 +118,8 @@ def get_parser():
                         help="If > 0: set total number of training steps to perform. Override num_train_epochs.", )
     parser.add_argument("--reduction", default="token_mean", type=str,
                         help="CRF reduction ['sum','mean','token_mean']", )
-            
+    parser.add_argument("--seed", type=int, default=42, help="random seed for initialization")
+    
     # runing mode
     parser.add_argument('--do_train', default=True, action='store_true',
                         help='Whether to run train process')
