@@ -1,18 +1,22 @@
+import os
+import torch
+import random
 import logging
 import argparse
+import numpy as np
 
 from pathlib import Path
 
 TASK_NAME = 'SV'
 DATA_DIR = './data/datasets/'
-TRAIN_FILE = DATA_DIR + TASK_NAME + '/cve-500.jsonl'
-EVAL_FILE = DATA_DIR + TASK_NAME + '/cve-500.jsonl'
-PREDICT_FILE = DATA_DIR + TASK_NAME + '/cve-500.jsonl'
+TRAIN_FILE = DATA_DIR + TASK_NAME + '/cve-1000.jsonl'
+EVAL_FILE = DATA_DIR + TASK_NAME + '/cve-1000.jsonl'
+PREDICT_FILE = DATA_DIR + TASK_NAME + '/cve-1000.jsonl'
 
 CHECK_POINT = 'bert-base-uncased'
 
-OUTPUR_DIR = './model_cache/'
-PREDICT_RESULT_DIR = OUTPUR_DIR+'predict_result.json'
+OUTPUT_DIR = './model_cache/'
+PREDICT_RESULT_DIR = OUTPUT_DIR+'predict_result.json'
 
 logger = logging.getLogger()
 
@@ -40,6 +44,22 @@ def init_logger(log_file=None, log_file_level=logging.NOTSET):
         logger.addHandler(file_handler)
     return logger
 
+def seed_everything(seed=1029):
+    '''
+    设置整个开发环境的seed
+    :param seed:
+    :param device:
+    :return:
+    '''
+    random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    # some cudnn methods can be random even after fixing the seed
+    # unless you tell it to be deterministic
+    torch.backends.cudnn.deterministic = True
 
 def get_parser():
     parser = argparse.ArgumentParser('NLP model parameter setting.')
@@ -59,7 +79,7 @@ def get_parser():
                         type=str,  help='Predict file for model predict')
     parser.add_argument('--model_type', default="bert-crf",
                         type=str,  help="Please select model type!")
-    parser.add_argument('--output_dir', default=OUTPUR_DIR, type=str,
+    parser.add_argument('--output_dir', default=OUTPUT_DIR, type=str,
                         help='The output directory where the model trained will be written ')
     parser.add_argument('--predict_result_dir', default=PREDICT_RESULT_DIR, type=str,
                         help='The predict result file path when do predict')
@@ -72,7 +92,7 @@ def get_parser():
                         help='Total number of training epochs to perform')
     parser.add_argument('--max_train_step', default=8600,
                         type=int, help='Max step for model training')
-    parser.add_argument('--learning_rate', default=2e-5, type=float,
+    parser.add_argument('--learning_rate', default=5e-5, type=float,
                         help='Default learning rate for model training.')
     parser.add_argument("--adam_epsilon", default=1e-8, type=float,
                         help="Epsilon for Adam optimizer.")  
@@ -84,7 +104,9 @@ def get_parser():
                         help='Training step.')
     parser.add_argument('--logging_step', default=1000, type=int,
                         help="Log checkpoint every X updates steps")
-    parser.add_argument('--save_step', default=1000, type=int,
+    parser.add_argument('--save_step', default=-1, type=int,
+                        help="Save checkpoint every X updates steps")
+    parser.add_argument('--eval_step', default=1000, type=int,
                         help="Save checkpoint every X updates steps")
     parser.add_argument('--loss_type', default='ce', type=str,
                         help="loss function type ('lsr', 'focal', 'ce')")
@@ -94,11 +116,14 @@ def get_parser():
                         help="Number of updates steps to accumulate before performing a backward/update pass.", )
     parser.add_argument("--max_steps", default=-1, type=int,
                         help="If > 0: set total number of training steps to perform. Override num_train_epochs.", )
-            
+    parser.add_argument("--reduction", default="token_mean", type=str,
+                        help="CRF reduction ['sum','mean','token_mean']", )
+    parser.add_argument("--seed", type=int, default=42, help="random seed for initialization")
+    
     # runing mode
-    parser.add_argument('--do_train', default=False, action='store_true',
+    parser.add_argument('--do_train', default=True, action='store_true',
                         help='Whether to run train process')
-    parser.add_argument('--do_eval', default=True, action='store_true',
+    parser.add_argument('--do_eval', default=False, action='store_true',
                         help='Whether to run evaluate process')
     parser.add_argument('--do_predict', default=False, action='store_true',
                         help='Whether to run predict process')

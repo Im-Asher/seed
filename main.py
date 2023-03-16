@@ -6,26 +6,43 @@ import torch.cuda
 import numpy as np
 import json
 import time
+import math
 
 from tqdm import tqdm
 from utils.commom import init_logger, logger
 from torch.utils.data import DataLoader
 from data.data_utils import collate_fn, load_data, id2label, label2id
 from model_provider import BertForNer, BertCrfForNer, BertMlpForNer
+from config_provider import BertCrfConfig
 from transformers import AutoConfig, AutoTokenizer, AdamW, get_scheduler
-from seqeval.metrics import classification_report,f1_score,accuracy_score,precision_score,recall_score
+from seqeval.metrics import classification_report, f1_score, accuracy_score, precision_score, recall_score
 from seqeval.scheme import IOB2
-from utils.commom import get_parser
+from utils.commom import get_parser,seed_everything
 from torch.optim.lr_scheduler import LambdaLR
 
+max_precision = 0
 
 logger = logging.getLogger(__name__)
 
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:128"
+
 MODEL_CLASS = {
     'bert': (AutoConfig, BertForNer, AutoTokenizer),
-    'bert-crf': (AutoConfig, BertCrfForNer, AutoTokenizer),
+    'bert-crf': (BertCrfConfig, BertCrfForNer, AutoTokenizer),
     'bert-mlp': (AutoConfig, BertMlpForNer, AutoTokenizer)
 }
+
+
+def save_model(model, args):
+    if not os.path.exists(args.output_dir):
+        os.makedirs(args.output_dir)
+    logger.info("Saving model checkpoint to {}".format(args.output_dir))
+
+    model_to_save = (model.module if hasattr(model, "module") else model)
+    model_to_save.save_pretrained(args.output_dir)
+    tokenizer.save_vocabulary(args.output_dir)
+    torch.save(args, os.path.join(args.output_dir, "training_args.bin"))
+
 
 def get_linear_schedule_with_warmup(optimizer, num_warmup_steps, num_training_steps, last_epoch=-1):
     """ Create a schedule with a learning rate that decreases linearly after
@@ -38,18 +55,22 @@ def get_linear_schedule_with_warmup(optimizer, num_warmup_steps, num_training_st
 
     return LambdaLR(optimizer, lr_lambda, last_epoch)
 
+
 def train(args: argparse.Namespace, train_dataloader, model: BertForNer, tokenizer, config):
     # optimizer = AdamW(model.parameters(), lr=args.learning_rate)
     # lr_scheduler = get_scheduler('linear', optimizer=optimizer,
     #                              num_warmup_steps=0, num_training_steps=args.num_training_steps)
     global_step = 0
     tr_loss = 0.0
-    
+    global max_precision
+
     if args.max_steps > 0:
         t_total = args.max_steps
-        args.num_train_epoch = args.max_steps // (len(train_dataloader) // args.gradient_accumulation_steps) + 1
+        args.num_train_epoch = args.max_steps // (
+            len(train_dataloader) // args.gradient_accumulation_steps) + 1
     else:
-        t_total = len(train_dataloader) // args.gradient_accumulation_steps * args.num_train_epoch
+        t_total = len(
+            train_dataloader) // args.gradient_accumulation_steps * args.num_train_epoch
 
     no_decay = ["bias", "LayerNorm.weight"]
 
@@ -73,9 +94,11 @@ def train(args: argparse.Namespace, train_dataloader, model: BertForNer, tokeniz
         {'params': [p for n, p in linear_param_optimizer if any(nd in n for nd in no_decay)], 'weight_decay': 0.0,
          'lr': args.crf_learning_rate}
     ]
+    seed_everything(args.seed)
 
     args.warmup_steps = int(t_total * args.warmup_proportion)
-    optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate, eps=args.adam_epsilon)
+    optimizer = AdamW(optimizer_grouped_parameters,
+                      lr=args.learning_rate, eps=args.adam_epsilon)
     scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=args.warmup_steps,
                                                 num_training_steps=t_total)
     # Show Training Parameters
@@ -85,24 +108,28 @@ def train(args: argparse.Namespace, train_dataloader, model: BertForNer, tokeniz
     logger.info("Training epochs = %d", args.num_train_epoch)
     logger.info("Learining rate = %f", args.learning_rate)
     logger.info("Data batch size = %d", args.batch_size)
+    logger.info("CRF reduction tpye = %s", args.reduction)
+
     logger.info("***** Training Fun *****")
 
     progress_bar = tqdm(range(len(train_dataloader)), ncols=100)
 
     for epoch in range(args.num_train_epoch):
-        logger.info(f'Epoch {epoch +1}/{args.num_train_epoch}\n-------------------')
+        logger.info(
+            f'Epoch {epoch +1}/{args.num_train_epoch}\n-------------------')
         progress_bar.reset()
         progress_bar.set_description(f'loss value:{0:>7f}')
-
-        model.train()
 
         n_epoch_total_loss = 0
         finish_batch_num = epoch * len(train_dataloader)
 
         for batch, (feature, label) in enumerate(train_dataloader, start=1):
+
+            model.train()
+
             feature, label = feature.to(args.device), label.to(args.device)
 
-            loss, _ = model(feature, label)
+            loss, _ = model(labels=label, **feature)
             tr_loss += loss.item()
             optimizer.zero_grad()
             loss.backward()
@@ -127,8 +154,15 @@ def train(args: argparse.Namespace, train_dataloader, model: BertForNer, tokeniz
                 model_to_save.save_pretrained(output_dir)
                 torch.save(args, os.path.join(output_dir, "training_args.bin"))
                 tokenizer.save_vocabulary(output_dir)
-                torch.save(lr_scheduler.state_dict(), os.path.join(
-                    output_dir, "lr_scheduler.pt"))
+                torch.save(scheduler.state_dict(), os.path.join(
+                    output_dir, "scheduler.pt"))
+
+            if args.eval_step > 0 and global_step % args.eval_step == 0:
+                results = evaluate(args=args, config=config, model=model)
+                if max_precision < results[1]:
+                    max_precision = results[1]
+                    save_model(model, args)
+                model.train()
         logger.info("\n")
         logger.info(
             f"Epoch {epoch+1}/{args.num_train_epoch}: loss value:{tr_loss/global_step}")
@@ -138,8 +172,15 @@ def train(args: argparse.Namespace, train_dataloader, model: BertForNer, tokeniz
     return global_step, tr_loss / global_step
 
 
-def evaluate(config, model: BertForNer, eval_dataloader: DataLoader):
+def evaluate(args, config, model: BertForNer):
     true_labels, true_predictions = [], []
+
+    dataset_all = load_data(args.train_file)
+
+    train_index = math.ceil(len(dataset_all)*0.8)
+
+    eval_dataloader = DataLoader(dataset_all[
+        train_index:], batch_size=args.batch_size, shuffle=True, collate_fn=collate_fn)
 
     model.eval()
 
@@ -148,21 +189,16 @@ def evaluate(config, model: BertForNer, eval_dataloader: DataLoader):
     with torch.no_grad():
         progress_bar = tqdm(range(len(eval_dataloader)))
         for feature, label in eval_dataloader:
-            feature, label = feature.to(args.device), label.to(args.device)
-            loss,pred = model(feature,label)
-            masks = torch.tensor(feature['attention_mask'],dtype=torch.uint8)
-            tags = model.crf.decode(pred,masks)
+            feature, labels = feature.to(args.device), label.to(args.device)
+            loss, pred = model(labels=labels, **feature)
+            masks = torch.tensor(feature['attention_mask'], dtype=torch.uint8)
+            tags = model.crf.decode(pred, masks)
             predictions = pred[0].argmax(dim=-1).cpu().numpy().tolist()
             labels = label.cpu().numpy().tolist()
-            # true_labels += [[config.id2label[int(l)]
-            #                  for l in label if l !=-100] for label in labels]
+
             true_labels += [[config.id2label[int(l)]
-                             for m,l in zip(mask,label) if m !=0] for mask,label in zip(masks,labels) ]
-            # true_predictions += [
-            #     [config.id2label[int(p)] for (p, l) in zip(
-            #         prediction, label) if l != -100]
-            #     for prediction, label in zip(predictions, labels)
-            # ]
+                             for m, l in zip(mask, label) if m != 0] for mask, label in zip(masks, labels)]
+
             true_predictions += [
                 [config.id2label[int(p)] for (p, l) in zip(
                     prediction, label) if l != -100]
@@ -170,13 +206,14 @@ def evaluate(config, model: BertForNer, eval_dataloader: DataLoader):
             ]
             progress_bar.update(1)
     logger.info(classification_report(true_labels,
-          true_predictions, mode='strict', scheme=IOB2))
-    f1_value = f1_score(true_labels,true_predictions)
-    precision_value = precision_score(true_labels,true_predictions)
-    recall_value = recall_score(true_labels,true_predictions)
-    accuracy_value = accuracy_score(true_labels,true_predictions)
-    print(f'f1_value:{f1_value},precision_value:{precision_value},recall_value:{recall_value},accuracy_value:{accuracy_value}')
-    return f1_value
+                                      true_predictions, mode='strict', scheme=IOB2))
+    f1_value = f1_score(true_labels, true_predictions)
+    precision_value = precision_score(true_labels, true_predictions)
+    recall_value = recall_score(true_labels, true_predictions)
+    accuracy_value = accuracy_score(true_labels, true_predictions)
+    logger.info(
+        f'f1_value:{f1_value},precision_value:{precision_value},recall_value:{recall_value},accuracy_value:{accuracy_value}')
+    return f1_value, precision_value, recall_value, accuracy_value
 
 
 def predict(args: argparse.Namespace, model: BertForNer, predict_dataloader: DataLoader, tokenizer: AutoTokenizer):
@@ -267,6 +304,7 @@ if __name__ == "__main__":
     config = config_class.from_pretrained(args.name_or_path)
     config.id2label = id2label
     config.label2id = label2id
+    config.reduction = args.reduction
     config.loss_type = args.loss_type
 
     model = model_class.from_pretrained(
@@ -276,45 +314,42 @@ if __name__ == "__main__":
         args.name_or_path, do_lower_case=True)
 
     logger.info("Training/evaluation parameters %s", args)
+    
+    seed_everything(args.seed)
+
+    dataset_all = load_data(args.train_file)
+    train_index = math.ceil(len(dataset_all)*0.8)
+    eval_index = len(dataset_all) - train_index
 
     if args.do_train:
-        train_dataloader = DataLoader(load_data(args.train_file)[
-            :400], batch_size=args.batch_size, shuffle=True, collate_fn=collate_fn)
+        train_dataloader = DataLoader(dataset_all[
+            :train_index], batch_size=args.batch_size, shuffle=True, collate_fn=collate_fn)
         train(args=args, train_dataloader=train_dataloader,
               model=model, tokenizer=tokenizer, config=config)
+        results = evaluate(args=args, config=config, model=model)
 
         # Save trained model/tokenizer/training parameters
-        if not os.path.exists(args.output_dir):
-            os.makedirs(args.output_dir)
-        logger.info("Saving model checkpoint to {}".format(args.output_dir))
-
-        model_to_save = (model.module if hasattr(model, "module") else model)
-        model_to_save.save_pretrained(args.output_dir)
-        tokenizer.save_vocabulary(args.output_dir)
-        torch.save(args, os.path.join(args.output_dir, "training_args.bin"))
+        if max_precision < results[1]:
+            save_model(model, args)
 
     results = {}
     if args.do_eval:
         tokenizer = tokenizer_class.from_pretrained(
-            args.output_dir, do_lower_case=True)
+            args.name_or_path, do_lower_case=True)
         checkpoints = [args.output_dir]
         logger.info("Evaluate the following checkpoints: %s", checkpoints)
-
-        eval_dataloader = DataLoader(load_data(args.train_file)[
-                                     400:], batch_size=args.batch_size, shuffle=True, collate_fn=collate_fn)
 
         for checkpoint in checkpoints:
             config = config_class.from_pretrained(checkpoint)
             model = model_class.from_pretrained(
                 checkpoint, config=config).to(args.device)
-            result = evaluate(config=config, model=model,
-                              eval_dataloader=eval_dataloader)
-            results.update({checkpoint:result})
+            result = evaluate(args=args, config=config, model=model)
+            results.update({checkpoint: result})
         output_eval_results = os.path.join(args.output_dir, "eval_resutls.txt")
 
         with open(output_eval_results, 'w') as f:
             for key in sorted(results.keys()):
                 f.write("{} = {}\n".format(key, str(results[key])))
 
-    if args.do_predict:
-        pass
+    # if args.do_predict:
+    #     pass
