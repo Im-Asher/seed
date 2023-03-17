@@ -9,9 +9,9 @@ from pathlib import Path
 
 TASK_NAME = 'SV'
 DATA_DIR = './data/datasets/'
-TRAIN_FILE = DATA_DIR + TASK_NAME + '/cve-1000.jsonl'
-EVAL_FILE = DATA_DIR + TASK_NAME + '/cve-1000.jsonl'
-PREDICT_FILE = DATA_DIR + TASK_NAME + '/cve-1000.jsonl'
+TRAIN_FILE = DATA_DIR + TASK_NAME + '/cve-1000-v2.jsonl'
+EVAL_FILE = DATA_DIR + TASK_NAME + '/cve-1000-v2.jsonl'
+PREDICT_FILE = DATA_DIR + TASK_NAME + '/cve-1000-v2.jsonl'
 
 CHECK_POINT = 'bert-base-uncased'
 
@@ -119,7 +119,7 @@ def get_parser():
     parser.add_argument("--reduction", default="token_mean", type=str,
                         help="CRF reduction ['sum','mean','token_mean']", )
     parser.add_argument("--seed", type=int, default=42, help="random seed for initialization")
-    
+
     # runing mode
     parser.add_argument('--do_train', default=True, action='store_true',
                         help='Whether to run train process')
