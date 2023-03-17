@@ -11,7 +11,7 @@ import math
 from tqdm import tqdm
 from utils.commom import init_logger, logger
 from torch.utils.data import DataLoader
-from data.data_utils import collate_fn, load_data, id2label, label2id
+from data.data_utils import collate_fn, load_data,load_labels
 from model_provider import BertForNer, BertCrfForNer, BertMlpForNer
 from config_provider import BertCrfConfig
 from transformers import AutoConfig, AutoTokenizer, AdamW, get_scheduler
@@ -302,8 +302,9 @@ if __name__ == "__main__":
     config_class, model_class, tokenizer_class = MODEL_CLASS[args.model_type]
 
     config = config_class.from_pretrained(args.name_or_path)
-    config.id2label = id2label
-    config.label2id = label2id
+
+    config.id2label,config.label2id = load_labels(args.labels_file)
+
     config.reduction = args.reduction
     config.loss_type = args.loss_type
 

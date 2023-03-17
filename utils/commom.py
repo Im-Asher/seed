@@ -13,6 +13,8 @@ TRAIN_FILE = DATA_DIR + TASK_NAME + '/cve-1000-v2.jsonl'
 EVAL_FILE = DATA_DIR + TASK_NAME + '/cve-1000-v2.jsonl'
 PREDICT_FILE = DATA_DIR + TASK_NAME + '/cve-1000-v2.jsonl'
 
+LABELS_FILE = DATA_DIR + 'labels.txt'
+
 CHECK_POINT = 'bert-base-uncased'
 
 OUTPUT_DIR = './model_cache/'
@@ -77,6 +79,8 @@ def get_parser():
                         type=str,  help='Evaluate file for model evaluate')
     parser.add_argument('--predict_file', default=PREDICT_FILE,
                         type=str,  help='Predict file for model predict')
+    parser.add_argument('--labels_file', default=LABELS_FILE,
+                        type=str,  help='labels file for model to identify entity')
     parser.add_argument('--model_type', default="bert-crf",
                         type=str,  help="Please select model type!")
     parser.add_argument('--output_dir', default=OUTPUT_DIR, type=str,
