@@ -11,13 +11,13 @@ import math
 from tqdm import tqdm
 from utils.commom import init_logger, logger
 from torch.utils.data import DataLoader
-from data.data_utils import collate_fn, load_data,load_labels
+from data.data_utils import collate_fn, load_data, load_labels
 from model_provider import BertForNer, BertCrfForNer, BertMlpForNer
 from config_provider import BertCrfConfig
 from transformers import AutoConfig, AutoTokenizer, AdamW, get_scheduler
 from seqeval.metrics import classification_report, f1_score, accuracy_score, precision_score, recall_score
 from seqeval.scheme import IOB2
-from utils.commom import get_parser,seed_everything
+from utils.commom import get_parser, seed_everything
 from torch.optim.lr_scheduler import LambdaLR
 
 max_precision = 0
@@ -216,7 +216,7 @@ def evaluate(args, config, model: BertForNer):
     return f1_value, precision_value, recall_value, accuracy_value
 
 
-def predict(args: argparse.Namespace, model: BertForNer, predict_dataloader: DataLoader, tokenizer: AutoTokenizer):
+def predict(args: argparse.Namespace, config, model: BertForNer, predict_dataloader: DataLoader, tokenizer: AutoTokenizer):
     logger.info("start predict ...")
     progress_bar = tqdm(range(len(predict_dataloader)))
     results = []
@@ -241,7 +241,7 @@ def predict(args: argparse.Namespace, model: BertForNer, predict_dataloader: Dat
         idx = 0
         while idx < len(predictions):
             pred = predictions[idx]
-            label = id2label[pred]
+            label = config.id2label[pred]
             if label != "O":
                 label = label[2:]  # Remove the B- or I-
                 start, end = offsets[idx]
@@ -249,7 +249,7 @@ def predict(args: argparse.Namespace, model: BertForNer, predict_dataloader: Dat
                 # Grab all the tokens labeled with I-label
                 while (
                     idx + 1 < len(predictions) and
-                    id2label[predictions[idx + 1]] == f"I-{label}"
+                    config.id2label[predictions[idx + 1]] == f"I-{label}"
                 ):
                     all_scores.append(
                         probabilities[idx + 1][predictions[idx + 1]])
@@ -303,7 +303,7 @@ if __name__ == "__main__":
 
     config = config_class.from_pretrained(args.name_or_path)
 
-    config.id2label,config.label2id = load_labels(args.labels_file)
+    config.id2label, config.label2id = load_labels(args.labels_file)
 
     config.reduction = args.reduction
     config.loss_type = args.loss_type
@@ -315,7 +315,7 @@ if __name__ == "__main__":
         args.name_or_path, do_lower_case=True)
 
     logger.info("Training/evaluation parameters %s", args)
-    
+
     seed_everything(args.seed)
 
     dataset_all = load_data(args.train_file)
