@@ -4,8 +4,8 @@ import numpy as np
 from transformers import AutoTokenizer
 
 
-id2label = {0: 'O', 1: 'B-SOFT', 2: 'I-SOFT', 3: 'B-VER', 4: 'I-VER'}
-label2id = {'O': 0, 'B-SOFT': 1, 'I-SOFT': 2, 'B-VER': 3, 'I-VER': 4}
+# id2label = {0: 'O', 1: 'B-SOFT', 2: 'I-SOFT', 3: 'B-VER', 4: 'I-VER'}
+# label2id = {'O': 0, 'B-SOFT': 1, 'I-SOFT': 2, 'B-VER': 3, 'I-VER': 4}
 
 id2label = {0: 'O', 1: 'B-SOFT', 2: 'I-SOFT', 3: 'B-VERR', 4: 'I-VERR', 5: 'B-VERL', 6: 'I-VERL'}
 label2id = {'O': 0, 'B-SOFT': 1, 'I-SOFT': 2, 'B-VERR': 3, 'I-VERR': 4, 'B-VERL': 5, 'I-VERL': 6}
