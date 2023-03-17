@@ -133,3 +133,9 @@ class BertCrfPipeline(Pipeline):
             if len(v_range) > 2:
                 return f"{v_range}","LIST"
 
+    def _convert_to_version_format(self,versiont_entity:str,version_type:str):
+        # judge version type (range or list)
+        # extract version QTY
+        # return [version0,version1...] when version type is list
+        # return version range by strategy when version type is range
+        pass
