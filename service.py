@@ -11,7 +11,9 @@ AutoModel.register(BertCrfConfig,BertCrfForNer)
 sv_runner = bentoml.transformers.get("bert-crf:latest").to_runner()
 svc = bentoml.Service("sv_ner_service",runners=[sv_runner])
 
-@svc.api(input=JSON(),output=JSON())
+ROUTE = 'api/v1/ner/'
+
+@svc.api(input=JSON(),output=JSON(), route=ROUTE +'extract')
 def extract(request: dict):
     res = {'status':0}
     if 'task' not in request.keys() or 'sv' == request.get('task'):

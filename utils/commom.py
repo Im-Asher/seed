@@ -9,9 +9,11 @@ from pathlib import Path
 
 TASK_NAME = 'SV'
 DATA_DIR = './data/datasets/'
-TRAIN_FILE = DATA_DIR + TASK_NAME + '/cve-1000.jsonl'
-EVAL_FILE = DATA_DIR + TASK_NAME + '/cve-1000.jsonl'
-PREDICT_FILE = DATA_DIR + TASK_NAME + '/cve-1000.jsonl'
+TRAIN_FILE = DATA_DIR + TASK_NAME + '/cve-2000.jsonl'
+EVAL_FILE = DATA_DIR + TASK_NAME + '/cve-2000.jsonl'
+PREDICT_FILE = DATA_DIR + TASK_NAME + '/cve-2000.jsonl'
+
+LABELS_FILE = DATA_DIR + 'labels.txt'
 
 CHECK_POINT = 'bert-base-uncased'
 
@@ -77,6 +79,8 @@ def get_parser():
                         type=str,  help='Evaluate file for model evaluate')
     parser.add_argument('--predict_file', default=PREDICT_FILE,
                         type=str,  help='Predict file for model predict')
+    parser.add_argument('--labels_file', default=LABELS_FILE,
+                        type=str,  help='labels file for model to identify entity')
     parser.add_argument('--model_type', default="bert-crf",
                         type=str,  help="Please select model type!")
     parser.add_argument('--output_dir', default=OUTPUT_DIR, type=str,
@@ -119,7 +123,7 @@ def get_parser():
     parser.add_argument("--reduction", default="token_mean", type=str,
                         help="CRF reduction ['sum','mean','token_mean']", )
     parser.add_argument("--seed", type=int, default=42, help="random seed for initialization")
-    
+
     # runing mode
     parser.add_argument('--do_train', default=True, action='store_true',
                         help='Whether to run train process')
