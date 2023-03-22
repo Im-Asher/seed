@@ -9,9 +9,9 @@ from pathlib import Path
 
 TASK_NAME = 'SV'
 DATA_DIR = './data/datasets/'
-TRAIN_FILE = DATA_DIR + TASK_NAME + '/cve-1000-v2.jsonl'
-EVAL_FILE = DATA_DIR + TASK_NAME + '/cve-1000-v2.jsonl'
-PREDICT_FILE = DATA_DIR + TASK_NAME + '/cve-1000-v2.jsonl'
+TRAIN_FILE = DATA_DIR + TASK_NAME + '/cve-2000.jsonl'
+EVAL_FILE = DATA_DIR + TASK_NAME + '/cve-2000.jsonl'
+PREDICT_FILE = DATA_DIR + TASK_NAME + '/cve-2000.jsonl'
 
 LABELS_FILE = DATA_DIR + 'labels.txt'
 

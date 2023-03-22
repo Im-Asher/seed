@@ -4,6 +4,10 @@ import numpy as np
 
 from transformers import Pipeline
 
+version_pattern = r'\d+\.\d+(?:\.\d+)?(?:\w+|-\w+)?'
+NOT_SHOW_LABELS = ['B-FVERL', 'I-FVERL', 'B-FVERR', 'I-FVERR', 'O']
+VERSION_LABELS = ['VERR', 'VERL']
+
 
 class BertCrfPipeline(Pipeline):
     def _sanitize_parameters(self, **kwargs):
@@ -54,7 +58,7 @@ class BertCrfPipeline(Pipeline):
         while idx < len(output):
             label, tag = output[idx], output[idx]
 
-            if label != 'O':
+            if label not in NOT_SHOW_LABELS:
                 label = label[2:]
                 start, end = offsets[idx]
                 all_scores = [probabilities[idx]
@@ -68,12 +72,11 @@ class BertCrfPipeline(Pipeline):
                 word = sentences[start:end]
                 score = np.mean(all_scores).item()
                 l_type = label
-                if label == "VER":
-                    word,l_type = self._convert_to_version_range_v2(word)
+                if label in VERSION_LABELS:
+                    word = self._convert_to_version_format(word, label)
                 pred_label.append({
                     "entity_group": label,
                     "word": word,
-                    "type":l_type,
                     "score": score,
                     "start": start,
                     "end": end
@@ -83,22 +86,8 @@ class BertCrfPipeline(Pipeline):
 
         return pred_label
 
-    def _convert_to_version_range(self, version: str):
-        pattern = re.compile(r'\d+\.(?:\d+\.)*\d+(?:-\w+)?')
-        results = re.findall(pattern, version)
-        v_range = version
-        if len(results) > 0:
-            if len(results) == 1:
-                v_range = f'(,{results[0]}]'
-            if len(results) == 2:
-                v_range = f'[{results[0]},{results[1]}]'
-            if len(results) > 2:
-                t_range = ','.join(results)
-                v_range = f'[{t_range[:-1]}]'
-        return v_range
-
     def _convert_to_version_range_v2(self, version: str):
-        one_left = ['start','from']
+        one_left = ['start', 'from']
         one_right = ['prior', 'before', 'through', 'to', 'up', 'earlier']
         two_nochange = ['prior', 'from', 'up', 'start', 'before']
         v_range = []
@@ -107,7 +96,7 @@ class BertCrfPipeline(Pipeline):
 
         version_intervals = [(match.group(), match.start(), match.end())
                              for match in re.finditer(version_pattern, version)]
-        
+
         v_range = [v[0] for v in version_intervals]
 
         if len(v_range) > 0:
@@ -127,15 +116,81 @@ class BertCrfPipeline(Pipeline):
                 for w in two_nochange:
                     s = t_version.find(w)
                     if s != -1:
-                        return f"[{v_range[0]},{v_range[1]}]","RANGE"
-                return f"[{v_range[0]},{v_range[1]}]","LIST"
+                        return f"[{v_range[0]},{v_range[1]}]", "RANGE"
+                return f"[{v_range[0]},{v_range[1]}]", "LIST"
 
             if len(v_range) > 2:
-                return f"{v_range}","LIST"
+                return f"{v_range}", "LIST"
 
-    def _convert_to_version_format(self,versiont_entity:str,version_type:str):
-        # judge version type (range or list)
-        # extract version QTY
-        # return [version0,version1...] when version type is list
-        # return version range by strategy when version type is range
-        pass
+    def _convert_to_version_format(self, entity: str, label: str):
+        if label == 'VERL':
+            return self._convert_to_version_list(entity)
+        if label == 'VERR':
+            return self._convert_to_version_range(entity)
+
+    def _convert_to_version_list(self, entity: str):
+        version_intervals = [(match.group(), match.start(), match.end())
+                             for match in re.finditer(version_pattern, entity)]
+
+        versions = [v[0] for v in version_intervals]
+
+        return versions
+
+    def _convert_to_version_range(self, entity: str):
+        one_left = ['start', 'from']
+        one_right = ['prior', 'before', 'through', 'to', 'up', 'earlier']
+        two_nochange = ['prior', 'from', 'up', 'start', 'before']
+        entity = entity.lower()
+        # special version convert to specific version (e.g 5.x->5.0)
+        special_char_pattern = r'[/:*x]'
+        special = re.compile(special_char_pattern, re.I)
+
+        version_intervals = [(match.group(), match.start(), match.end())
+                             for match in re.finditer(version_pattern, entity)]
+
+        versions = [special.sub('0', v[0]) for v in version_intervals]
+
+        versions = sorted(versions)
+
+        if len(versions) < 1:
+            s = entity.find('all')
+            if s != -1:
+                return f'[,]'
+            return f'[]'
+
+        if len(versions) == 1:
+            for w in one_left:
+                s = entity.find(w)
+                if s != -1:
+                    return self._comfirm_the_boundary(entity, f"'{versions[0]}',", 1)
+
+            for w in one_right:
+                s = entity.find(w)
+                if s != -1:
+                    return self._comfirm_the_boundary(entity, f",'{versions[0]}'", 1)
+
+        if len(versions) == 2:
+            return self._comfirm_the_boundary(entity, f"'{versions[0]}','{versions[1]}'", 2)
+        if len(versions) >= 3:
+            version_str = f"'{versions[0]}','{versions[-1]}'"
+            return self._comfirm_the_boundary(entity, version_str, 3)
+
+    def _comfirm_the_boundary(self, entity: str, versions: str, versions_size: int):
+        including_key_word = ['include', 'includ', 'through']
+        if versions_size < 1:
+            return versions
+        if versions_size == 1:
+            for w in including_key_word:
+                s = entity.find(w)
+                if s != -1:
+                    if versions.find(',') == 0:
+                        return f"({versions}]"
+                    else:
+                        return f"[{versions})"
+            return f"({versions})"
+        if versions_size > 1:
+            for w in including_key_word:
+                s = entity.find(w)
+                if s != -1:
+                    return f"[{versions}]"
+            return f"[{versions})"
