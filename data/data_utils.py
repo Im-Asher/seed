@@ -7,6 +7,15 @@ CHECK_POINT = 'bert-base-uncased'
 
 tokenizer = AutoTokenizer.from_pretrained(CHECK_POINT)
 
+def load_labels(labels_file: str):
+    labels = None
+    with open(labels_file, 'r', encoding='utf-8') as f:
+        labels = f.read().splitlines()
+    id2label = {ids: label for ids, label in enumerate(labels)}
+    label2id = {label: ids for ids, label in enumerate(labels)}
+    return id2label, label2id
+
+id2label, label2id = load_labels('./data/datasets/labels.txt')
 
 def load_data(path: str) -> list:
     res = []
@@ -47,12 +56,3 @@ def collate_fn(batch_samples):
                 print(idx, sentence)
 
     return batch_inputs, torch.LongTensor(batch_label)
-
-
-def load_labels(labels_file: str):
-    labels = None
-    with open(labels_file, 'r', encoding='utf-8') as f:
-        labels = f.read().splitlines()
-    id2label = {ids: label for ids, label in enumerate(labels)}
-    label2id = {label: ids for ids, label in enumerate(labels)}
-    return id2label, label2id
