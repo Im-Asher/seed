@@ -105,7 +105,7 @@ class BertCrfPipeline(Pipeline):
     def _convert_to_version_range(self, entity: str):
         one_left = ['start', 'from']
         one_right = ['prior', 'before', 'through', 'to', 'up', 'earlier']
-        
+
         # special version convert to specific version (e.g 5.x->5.0)
         special_char_pattern = r'[/:*x]'
         special = re.compile(special_char_pattern, re.I)
@@ -160,6 +160,26 @@ class BertCrfPipeline(Pipeline):
                     return f"[{versions}]"
             return f"[{versions})"
 
-    def _remove_duplicate_entity(entities:list):
+    def _remove_duplicate_entity(entities: list):
         pass
-    
+
+    def _combine_version(entities: list):
+        entities_size = len(entities)
+        idx = 0
+        results = []
+        
+        while idx < entities_size:
+            software = None
+            versions = []
+
+            if entities[idx]['entity_group']=='SOFT':
+                software = entities[idx]
+
+            while idx+1 < entities_size and entities[idx+1]['entity_group'] != 'SOFT':
+                versions.append(entities[idx+1])
+                idx += 1
+
+            results.append({'software':software,'versions':versions})
+            
+            idx += 1
+        return results
