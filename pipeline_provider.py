@@ -86,43 +86,9 @@ class BertCrfPipeline(Pipeline):
 
         return pred_label
 
-    def _convert_to_version_range_v2(self, version: str):
-        one_left = ['start', 'from']
-        one_right = ['prior', 'before', 'through', 'to', 'up', 'earlier']
-        two_nochange = ['prior', 'from', 'up', 'start', 'before']
-        v_range = []
-        t_version = version.lower()
-        version_pattern = r'\d+\.\d+(?:\.\d+)?(?:\w+|-\w+)?'
-
-        version_intervals = [(match.group(), match.start(), match.end())
-                             for match in re.finditer(version_pattern, version)]
-
-        v_range = [v[0] for v in version_intervals]
-
-        if len(v_range) > 0:
-            if len(v_range) == 1:
-                for w in one_left:
-                    s = t_version.find(w)
-                    if s != -1:
-                        return f"[{v_range[0]},)", "RANGE"
-                for w in one_right:
-                    s = t_version.find(w)
-                    if s != -1:
-                        return f"(,{v_range[0]}]", "RANGE"
-
-                return f'[{v_range[0]}]', "LIST"
-
-            if len(v_range) == 2:
-                for w in two_nochange:
-                    s = t_version.find(w)
-                    if s != -1:
-                        return f"[{v_range[0]},{v_range[1]}]", "RANGE"
-                return f"[{v_range[0]},{v_range[1]}]", "LIST"
-
-            if len(v_range) > 2:
-                return f"{v_range}", "LIST"
-
     def _convert_to_version_format(self, entity: str, label: str):
+        entity = entity.lower()
+
         if label == 'VERL':
             return self._convert_to_version_list(entity)
         if label == 'VERR':
@@ -139,8 +105,7 @@ class BertCrfPipeline(Pipeline):
     def _convert_to_version_range(self, entity: str):
         one_left = ['start', 'from']
         one_right = ['prior', 'before', 'through', 'to', 'up', 'earlier']
-        two_nochange = ['prior', 'from', 'up', 'start', 'before']
-        entity = entity.lower()
+
         # special version convert to specific version (e.g 5.x->5.0)
         special_char_pattern = r'[/:*x]'
         special = re.compile(special_char_pattern, re.I)
@@ -194,3 +159,27 @@ class BertCrfPipeline(Pipeline):
                 if s != -1:
                     return f"[{versions}]"
             return f"[{versions})"
+
+    def _remove_duplicate_entity(entities: list):
+        pass
+
+    def _combine_version(entities: list):
+        entities_size = len(entities)
+        idx = 0
+        results = []
+        
+        while idx < entities_size:
+            software = None
+            versions = []
+
+            if entities[idx]['entity_group']=='SOFT':
+                software = entities[idx]
+
+            while idx+1 < entities_size and entities[idx+1]['entity_group'] != 'SOFT':
+                versions.append(entities[idx+1])
+                idx += 1
+
+            results.append({'software':software,'versions':versions})
+            
+            idx += 1
+        return results
