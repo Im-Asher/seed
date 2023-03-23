@@ -10,8 +10,9 @@ import math
 
 from tqdm import tqdm
 from utils.commom import init_logger, logger
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, random_split
 from data.data_utils import collate_fn, load_data, load_labels
+from data.data_provider import CveDataset
 from model_provider import BertForNer, BertCrfForNer, BertMlpForNer
 from config_provider import BertCrfConfig
 from transformers import AutoConfig, AutoTokenizer, AdamW, get_scheduler
@@ -56,7 +57,7 @@ def get_linear_schedule_with_warmup(optimizer, num_warmup_steps, num_training_st
     return LambdaLR(optimizer, lr_lambda, last_epoch)
 
 
-def train(args: argparse.Namespace, train_dataloader, model: BertForNer, tokenizer, config):
+def train(args: argparse.Namespace, train_dataloader,eval_dataloader, model: BertForNer, tokenizer, config):
     # optimizer = AdamW(model.parameters(), lr=args.learning_rate)
     # lr_scheduler = get_scheduler('linear', optimizer=optimizer,
     #                              num_warmup_steps=0, num_training_steps=args.num_training_steps)
@@ -158,7 +159,7 @@ def train(args: argparse.Namespace, train_dataloader, model: BertForNer, tokeniz
                     output_dir, "scheduler.pt"))
 
             if args.eval_step > 0 and global_step % args.eval_step == 0:
-                results = evaluate(args=args, config=config, model=model)
+                results = evaluate(args=args, eval_dataloader=eval_dataloader,config=config,model=model)
                 if max_precision < results[1]:
                     max_precision = results[1]
                     save_model(model, args)
@@ -172,15 +173,8 @@ def train(args: argparse.Namespace, train_dataloader, model: BertForNer, tokeniz
     return global_step, tr_loss / global_step
 
 
-def evaluate(args, config, model: BertForNer):
+def evaluate(args, eval_dataloader,config,model: BertForNer):
     true_labels, true_predictions = [], []
-
-    dataset_all = load_data(args.train_file)
-
-    train_index = math.ceil(len(dataset_all)*0.8)
-
-    eval_dataloader = DataLoader(dataset_all[
-        train_index:], batch_size=args.batch_size, shuffle=True, collate_fn=collate_fn)
 
     model.eval()
 
@@ -316,18 +310,21 @@ if __name__ == "__main__":
 
     logger.info("Training/evaluation parameters %s", args)
 
+    # set random seed
     seed_everything(args.seed)
 
-    dataset_all = load_data(args.train_file)
-    train_index = math.ceil(len(dataset_all)*0.8)
-    eval_index = len(dataset_all) - train_index
-
+    # build CVE dataset (train dataset & eval dataset)
+    dataset_all = CveDataset(load_data(args.train_file))
+    train_dataset, eval_dataset = random_split(dataset_all, [0.8, 0.2])
+    train_dataloader = DataLoader(
+        train_dataset, batch_size=args.batch_size, shuffle=True, collate_fn=collate_fn)
+    eval_dataloader = DataLoader(
+        eval_dataset, batch_size=args.batch_size, shuffle=True, collate_fn=collate_fn)
+    
     if args.do_train:
-        train_dataloader = DataLoader(dataset_all[
-            :train_index], batch_size=args.batch_size, shuffle=True, collate_fn=collate_fn)
-        train(args=args, train_dataloader=train_dataloader,
+        train(args=args, train_dataloader=train_dataloader, eval_dataloader=eval_dataloader,
               model=model, tokenizer=tokenizer, config=config)
-        results = evaluate(args=args, config=config, model=model)
+        results = evaluate(args=args,eval_dataloader=eval_dataloader, config=config, model=model)
 
         # Save trained model/tokenizer/training parameters
         if max_precision < results[1]:
@@ -344,7 +341,7 @@ if __name__ == "__main__":
             config = config_class.from_pretrained(checkpoint)
             model = model_class.from_pretrained(
                 checkpoint, config=config).to(args.device)
-            result = evaluate(args=args, config=config, model=model)
+            result = evaluate(args=args, eval_dataloader=eval_dataloader,config=config, model=model)
             results.update({checkpoint: result})
         output_eval_results = os.path.join(args.output_dir, "eval_resutls.txt")
 
