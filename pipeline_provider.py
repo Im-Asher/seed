@@ -159,3 +159,7 @@ class BertCrfPipeline(Pipeline):
                 if s != -1:
                     return f"[{versions}]"
             return f"[{versions})"
+
+    def _remove_duplicate_entity(entities:list):
+        pass
+    
