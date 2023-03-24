@@ -83,8 +83,8 @@ class BertCrfPipeline(Pipeline):
                 })
 
             idx += 1
-
-        return pred_label
+        results = self._combine_version(pred_label)
+        return results
 
     def _convert_to_version_format(self, entity: str, label: str):
         entity = entity.lower()
@@ -160,26 +160,60 @@ class BertCrfPipeline(Pipeline):
                     return f"[{versions}]"
             return f"[{versions})"
 
-    def _remove_duplicate_entity(entities: list):
-        pass
+    def _remove_duplicate_entity(self, entities: list):
+        results = []
 
-    def _combine_version(entities: list):
+        idx = 0
+        duplicate_index = []
+        while idx < len(entities):
+            if idx in duplicate_index:
+                idx += 1
+                continue
+
+            duplicate_index.append(idx)
+
+            current_software = entities[idx].get(
+                'software', None).get('word', None)
+            current_version = entities[idx].get('versions')
+
+            if current_software is not None:
+                ids = idx + 1
+                while ids < len(entities) and ids not in duplicate_index:
+                    next_software = entities[ids].get(
+                        'software', None).get('word', None)
+                    if current_software == next_software:
+                        for i in entities[ids].get('versions'):
+                            current_version.append(i)
+                        duplicate_index.append(ids)
+                    ids += 1
+
+            results.append({'software': current_software,
+                           'versions': current_version})
+            idx += 1
+
+        return results
+
+    def _combine_version(self, entities: list):
         entities_size = len(entities)
         idx = 0
         results = []
-        
+
         while idx < entities_size:
             software = None
             versions = []
 
-            if entities[idx]['entity_group']=='SOFT':
+            if entities[idx]['entity_group'] == 'SOFT':
                 software = entities[idx]
+                while idx+1 < entities_size and entities[idx+1]['entity_group'] != 'SOFT':
+                    versions.append(entities[idx+1])
+                    idx += 1
+            else:
+                versions.append(entities[idx])
 
-            while idx+1 < entities_size and entities[idx+1]['entity_group'] != 'SOFT':
-                versions.append(entities[idx+1])
-                idx += 1
+            results.append({'software': software, 'versions': versions})
 
-            results.append({'software':software,'versions':versions})
-            
             idx += 1
+
+        results = self._remove_duplicate_entity(results)
+
         return results
