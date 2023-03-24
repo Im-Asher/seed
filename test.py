@@ -5,7 +5,7 @@ for runner in svc.runners:
 
 request = {
     "task":"sv",
-    "samples":["An issue has been discovered in GitLab affecting all versions, GitLab versions starting from 9.0 before 15.7.8, GitLab versions starting from 15.8 before 15.8.4, all versions starting from 15.9 before 15.9.2. It was possible to trigger a resource depletion attack due to improper filtering for number of requests to read commits details."]
+    "samples":["LibTIFF 4.4.0 has an out-of-bounds write in tiffcrop in tools/tiffcrop.c:3724, allowing attackers to cause a denial-of-service via a crafted tiff file. For users that compile libtiff from sources, the fix is available with commit 33aee127."]
 }
 
 result = svc.apis["extract"].func(request)

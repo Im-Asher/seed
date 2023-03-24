@@ -103,8 +103,8 @@ class BertCrfPipeline(Pipeline):
         return versions
 
     def _convert_to_version_range(self, entity: str):
-        one_left = ['start', 'from']
-        one_right = ['prior', 'before', 'through', 'to', 'up', 'earlier']
+        one_left = ['start', 'from','>','>=']
+        one_right = ['prior', 'before', 'through', 'to', 'up', 'earlier','<','<=']
 
         # special version convert to specific version (e.g 5.x->5.0)
         special_char_pattern = r'[/:*x]'
@@ -141,7 +141,7 @@ class BertCrfPipeline(Pipeline):
             return self._comfirm_the_boundary(entity, version_str, 3)
 
     def _comfirm_the_boundary(self, entity: str, versions: str, versions_size: int):
-        including_key_word = ['include', 'includ', 'through']
+        including_key_word = ['include', 'includ', 'through','=']
         if versions_size < 1:
             return versions
         if versions_size == 1:
@@ -172,15 +172,16 @@ class BertCrfPipeline(Pipeline):
 
             duplicate_index.append(idx)
 
-            current_software = entities[idx].get(
-                'software', None).get('word', None)
+            current_software = None if entities[idx].get(
+                'software', None) is None else entities[idx].get('software', None).get('word', None)
+
             current_version = entities[idx].get('versions')
 
             if current_software is not None:
                 ids = idx + 1
                 while ids < len(entities) and ids not in duplicate_index:
-                    next_software = entities[ids].get(
-                        'software', None).get('word', None)
+                    next_software = None if entities[ids].get(
+                        'software', None) is None else entities[ids].get('software', None).get('word', None)
                     if current_software == next_software:
                         for i in entities[ids].get('versions'):
                             current_version.append(i)
