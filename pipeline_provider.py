@@ -131,14 +131,14 @@ class BertCrfPipeline(Pipeline):
             for w in one_right:
                 s = entity.find(w)
                 if s != -1:
-                    return self._comfirm_the_boundary(entity, f",'{versions[0]}'", 1)
-            return self._comfirm_the_boundary(entity, f"'{versions[0]}',", 1)
+                    return self._comfirm_the_boundary(entity, f",{versions[0]}", 1)
+            return self._comfirm_the_boundary(entity, f"{versions[0]},", 1)
 
         if len(versions) == 2:
-            return self._comfirm_the_boundary(entity, f"'{versions[0]}','{versions[1]}'", 2)
+            return self._comfirm_the_boundary(entity, f"{versions[0]},{versions[1]}", 2)
         
         if len(versions) >= 3:
-            version_str = f"'{versions[0]}','{versions[-1]}'"
+            version_str = f"{versions[0]},{versions[-1]}"
             return self._comfirm_the_boundary(entity, version_str, 3)
 
     def _comfirm_the_boundary(self, entity: str, versions: str, versions_size: int):
