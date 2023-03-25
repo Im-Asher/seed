@@ -11,27 +11,29 @@ AutoModel.register(BertCrfConfig, BertCrfForNer)
 sv_runner = bentoml.transformers.get("bert-crf:latest").to_runner()
 svc = bentoml.Service("sv_ner_service", runners=[sv_runner])
 
-ROUTE = 'api/v1/ner/'
+ROUTE = "api/v1/ner/"
 
 
 @svc.api(input=JSON(), output=JSON(), route=ROUTE + 'extract')
 def extract(request: dict):
-    res = {'status': 0}
-    if 'sv' == request.get('task'):
+    res = {"status": 0}
+    if "sv" == request.get("task"):
         try:
             sentences = [sentence for sentence in request.get(
-                'samples') if len(sentence) > 0]
+                "samples") if len(sentence) > 0]
             if not sentences:
-                raise Exception("sentence is EMPTY")
+                raise Exception("Sentence is empty")
             results = sv_runner.run(sentences)
             for result in results:
                 if result:
-                    res['status'] = 1
-                    res['results'] = results
-                    res['msg'] = 'Success'
+                    res["status"] = 1
+                    res["results"] = results
+                    res["msg"] = "Success"
                     break
+                else:
+                    res["msg"] = "Can't extrcat entity information"
         except Exception as ex:
-            res['msg'] = str(ex)
+            res["msg"] = str(ex)
     else:
-        res['msg'] = "only support sv task ('task'='sv')"
+        res["msg"] = "Only support sv task ('task'='sv')"
     return res
