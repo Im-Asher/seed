@@ -17,7 +17,7 @@ AutoModel.register(BertCrfConfig, BertCrfForNer)
 
 config = AutoConfig.from_pretrained(NAME_OR_PATH)
 model = BertCrfForNer.from_pretrained(NAME_OR_PATH, config=config)
-tokenizer = AutoTokenizer.from_pretrained(BERT_TOKENIZER, do_lower_case=True)
+tokenizer = AutoTokenizer.from_pretrained(BERT_TOKENIZER, do_lower_case=True,model_max_length=512)
 
 TASK_DEFINITION = {
     "impl": BertCrfPipeline,
