@@ -103,6 +103,8 @@ class BertCrfPipeline(Pipeline):
 
         versions = [v[0] for v in version_intervals]
 
+        versions = ','.join(versions)
+        
         return versions
 
     def _convert_to_version_range(self, entity: str):
