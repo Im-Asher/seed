@@ -19,7 +19,11 @@ def extract(request: dict):
     res = {'status': 0}
     if 'sv' == request.get('task'):
         try:
-            results = sv_runner.run(request.get('samples'))
+            sentences = [sentence for sentence in request.get(
+                'samples') if len(sentence) > 0]
+            if not sentences:
+                raise Exception("sentence is EMPTY")
+            results = sv_runner.run(sentences)
             for result in results:
                 if result:
                     res['status'] = 1
@@ -27,7 +31,7 @@ def extract(request: dict):
                     res['msg'] = 'Success'
                     break
         except Exception as ex:
-            res['msg'] = ex
+            res['msg'] = str(ex)
     else:
         res['msg'] = "only support sv task ('task'='sv')"
     return res
