@@ -14,12 +14,7 @@ python:
   - "pandas==1.5.3"
   - "torch==1.13.1"
   - "datasets==2.10.0"
+  - "nltk==3.8.1"
   index_url: "https://pypi.tuna.tsinghua.edu.cn/simple/"
   trusted_host:
   - "pypi.tuna.tsinghua.edu.cn"
-
-docker:
-  distro: ubuntu
-  python_version: "3.10.9"
-  cuda_version: "11.6.2"
-  
