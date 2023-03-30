@@ -84,9 +84,43 @@ class BertCrfPipeline(Pipeline):
                         "word": word,
                         "score": score,
                     })
-                
+
                 idx += 1
-        results = self._combine_version(pred_label)
+        results = self.__combine_version(pred_label)
+        return results
+
+    def __combine(self, entities: list):
+        results = []
+        idx = 0
+        entities_size = len(entities_size)
+        vendor = None
+        
+        while idx < entities_size:
+            software = None
+            versions = []
+
+            if entities[idx]["entity_group"] == "VENDOR":
+                vendor = entities[idx]
+                idx += 1
+                continue
+            if entities[idx]["entity_group"] == "SOFT":
+                software = entities[idx]
+                while idx+1 < entities_size and entities[idx+1]["entity_group"] in VERSION_LABELS:
+                    versions.append(entities[idx+1])
+                    idx += 1
+            elif entities[idx]["entity_group"] in VERSION_LABELS:
+                versions.append(entities[idx])
+                while idx + 1 < entities_size and entities[idx+1]["entity_group"] != "SOFT":
+                    versions.append(entities[idx+1])
+                    idx += 1
+
+            results.append(
+                {"vendor": vendor, "software": software, "versions": versions})
+
+        if len(results) <= 0 and vendor:
+            results.append(
+                {"vendor": vendor, "software": None, "versions": []})
+
         return results
 
     def _convert_to_version_format(self, entity: str, label: str):
@@ -104,7 +138,7 @@ class BertCrfPipeline(Pipeline):
         versions = [v[0] for v in version_intervals]
 
         versions = ','.join(versions)
-        
+
         return versions
 
     def _convert_to_version_range(self, entity: str):
@@ -138,7 +172,7 @@ class BertCrfPipeline(Pipeline):
 
         if len(versions) == 2:
             return self._comfirm_the_boundary(entity, f"{versions[0]},{versions[1]}", 2)
-        
+
         if len(versions) >= 3:
             version_str = f"{versions[0]},{versions[-1]}"
             return self._comfirm_the_boundary(entity, version_str, 3)
@@ -163,7 +197,7 @@ class BertCrfPipeline(Pipeline):
                     return f"[{versions}]"
             return f"[{versions})"
 
-    def _remove_duplicate_entity(self, entities: list):
+    def __remove_duplicate_entity(self, entities: list):
         results = []
 
         idx = 0
@@ -197,7 +231,44 @@ class BertCrfPipeline(Pipeline):
 
         return results
 
-    def _combine_version(self, entities: list):
+    def __remove_duplicate(self, entities: list):
+        results = []
+
+        idx = 0
+        duplicate_index = []
+        entities_size = len(entities)
+
+        while idx < entities_size:
+            if idx in duplicate_index:
+                idx += 1
+                continue
+            duplicate_index.append(idx)
+
+            current_software = "" if entities[idx].get(
+                "software", "") is None else entities[idx].get("software", "").get("word", "")
+            current_vendor = "" if entities[idx].get(
+                "vendor", "") is None else entities[idx].get("vendor", "").get("word", "")
+            current_version = entities[idx].get("versions")
+
+            if current_software is not None:
+                ids = idx + 1
+                while ids < len(entities) and ids not in duplicate_index:
+                    next_software = "" if entities[ids].get(
+                        "software", "") is None else entities[ids].get("software", "").get("word", "")
+                    if current_software == next_software:
+                        for i in entities[ids].get("versions"):
+                            current_version.append(i)
+                        duplicate_index.append(ids)
+                    ids += 1
+
+            results.append({"vendor": current_vendor,
+                            "software": current_software,
+                           "versions": current_version})
+            idx += 1
+
+        return results
+
+    def __combine_version(self, entities: list):
         entities_size = len(entities)
         idx = 0
         results = []
@@ -208,12 +279,12 @@ class BertCrfPipeline(Pipeline):
 
             if entities[idx]['entity_group'] == 'SOFT':
                 software = entities[idx]
-                while idx+1 < entities_size and entities[idx+1]['entity_group'] != 'SOFT':
+                while idx+1 < entities_size and entities[idx+1]['entity_group'] in VERSION_LABELS:
                     versions.append(entities[idx+1])
                     idx += 1
-            else:
+            elif entities[idx]['entity_group'] in VERSION_LABELS:
                 versions.append(entities[idx])
-                while idx +1 < entities_size and entities[idx+1]['entity_group'] != 'SOFT':
+                while idx + 1 < entities_size and entities[idx+1]['entity_group'] != 'SOFT':
                     versions.append(entities[idx+1])
                     idx += 1
 
