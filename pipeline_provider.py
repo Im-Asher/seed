@@ -6,7 +6,7 @@ import numpy as np
 from transformers import Pipeline
 from nltk.tokenize import sent_tokenize
 
-version_pattern = r'\d+\.\d+(?:\.\d+)?(?:\w+|-\w+)?'
+version_pattern = r'\d+\.\d+(?:\.\d+)?(?:\w+|-\w+)?|\d+'
 NOT_SHOW_LABELS = ['B-FVERL', 'I-FVERL', 'B-FVERR', 'I-FVERR', 'O']
 VERSION_LABELS = ['VERR', 'VERL']
 
@@ -86,13 +86,14 @@ class BertCrfPipeline(Pipeline):
                     })
 
                 idx += 1
-        results = self.__combine_version(pred_label)
+        results = self.__combine(pred_label)
+        results= self.__remove_duplicate(results)
         return results
 
     def __combine(self, entities: list):
         results = []
         idx = 0
-        entities_size = len(entities_size)
+        entities_size = len(entities)
         vendor = None
         
         while idx < entities_size:
@@ -113,7 +114,9 @@ class BertCrfPipeline(Pipeline):
                 while idx + 1 < entities_size and entities[idx+1]["entity_group"] != "SOFT":
                     versions.append(entities[idx+1])
                     idx += 1
-
+            
+            idx += 1
+            
             results.append(
                 {"vendor": vendor, "software": software, "versions": versions})
 
