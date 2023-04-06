@@ -147,7 +147,7 @@ class BertCrfPipeline(Pipeline):
     def _convert_to_version_range(self, entity: str):
         one_left = ['start', 'from', '>', '>=']
         one_right = ['prior', 'before', 'through',
-                     'to', 'up', 'earlier', '<', '<=']
+                     'to', 'up', 'earlier', '<', '<=','below']
 
         # special version convert to specific version (e.g 5.x->5.0)
         special_char_pattern = r'[/:*x]'
