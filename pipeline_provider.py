@@ -147,7 +147,7 @@ class BertCrfPipeline(Pipeline):
     def _convert_to_version_range(self, entity: str):
         one_left = ['start', 'from', '>', '>=']
         one_right = ['prior', 'before', 'through',
-                     'to', 'up', 'earlier', '<', '<=']
+                     'to', 'up', 'earlier', '<', '<=','below']
 
         # special version convert to specific version (e.g 5.x->5.0)
         special_char_pattern = r'[/:*x]'
@@ -167,11 +167,12 @@ class BertCrfPipeline(Pipeline):
             return f'[]'
 
         if len(versions) == 1:
-            for w in one_right:
+            for w in one_left:
                 s = entity.find(w)
                 if s != -1:
-                    return self._comfirm_the_boundary(entity, f",{versions[0]}", 1)
-            return self._comfirm_the_boundary(entity, f"{versions[0]},", 1)
+                    return self._comfirm_the_boundary(entity, f"{versions[0]},", 1)
+
+            return self._comfirm_the_boundary(entity, f",{versions[0]}", 1)
 
         if len(versions) == 2:
             return self._comfirm_the_boundary(entity, f"{versions[0]},{versions[1]}", 2)
