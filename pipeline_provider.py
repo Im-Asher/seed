@@ -111,7 +111,7 @@ class BertCrfPipeline(Pipeline):
                     idx += 1
             elif entities[idx]["entity_group"] in VERSION_LABELS:
                 versions.append(entities[idx])
-                while idx + 1 < entities_size and entities[idx+1]["entity_group"] != "SOFT":
+                while idx + 1 < entities_size and entities[idx+1]["entity_group"] in VERSION_LABELS:
                     versions.append(entities[idx+1])
                     idx += 1
             
