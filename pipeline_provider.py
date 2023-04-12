@@ -163,8 +163,8 @@ class BertCrfPipeline(Pipeline):
         if len(versions) < 1:
             s = entity.find('all')
             if s != -1:
-                return f'[,]'
-            return f'[]'
+                return f'(,)'
+            return f'()'
 
         if len(versions) == 1:
             for w in one_left:
