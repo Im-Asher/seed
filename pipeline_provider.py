@@ -79,11 +79,12 @@ class BertCrfPipeline(Pipeline):
                     if label in VERSION_LABELS:
                         word = self._convert_to_version_format(word, label)
 
-                    pred_label.append({
-                        "entity_group": label,
-                        "word": word,
-                        "score": score,
-                    })
+                    if word!='[]':
+                        pred_label.append({
+                            "entity_group": label,
+                            "word": word,
+                            "score": score,
+                        })
 
                 idx += 1
         results = self.__combine(pred_label)
@@ -201,40 +202,6 @@ class BertCrfPipeline(Pipeline):
                     return f"[{versions}]"
             return f"[{versions})"
 
-    def __remove_duplicate_entity(self, entities: list):
-        results = []
-
-        idx = 0
-        duplicate_index = []
-        while idx < len(entities):
-            if idx in duplicate_index:
-                idx += 1
-                continue
-
-            duplicate_index.append(idx)
-
-            current_software = "" if entities[idx].get(
-                'software', "") is None else entities[idx].get('software', "").get('word', "")
-
-            current_version = entities[idx].get('versions')
-
-            if current_software is not None:
-                ids = idx + 1
-                while ids < len(entities) and ids not in duplicate_index:
-                    next_software = "" if entities[ids].get(
-                        'software', "") is None else entities[ids].get('software', "").get('word', "")
-                    if current_software == next_software:
-                        for i in entities[ids].get('versions'):
-                            current_version.append(i)
-                        duplicate_index.append(ids)
-                    ids += 1
-
-            results.append({'software': current_software,
-                           'versions': current_version})
-            idx += 1
-
-        return results
-
     def __remove_duplicate(self, entities: list):
         results = []
 
@@ -269,34 +236,6 @@ class BertCrfPipeline(Pipeline):
                             "software": current_software,
                            "versions": current_version})
             idx += 1
-
-        return results
-
-    def __combine_version(self, entities: list):
-        entities_size = len(entities)
-        idx = 0
-        results = []
-
-        while idx < entities_size:
-            software = None
-            versions = []
-
-            if entities[idx]['entity_group'] == 'SOFT':
-                software = entities[idx]
-                while idx+1 < entities_size and entities[idx+1]['entity_group'] in VERSION_LABELS:
-                    versions.append(entities[idx+1])
-                    idx += 1
-            elif entities[idx]['entity_group'] in VERSION_LABELS:
-                versions.append(entities[idx])
-                while idx + 1 < entities_size and entities[idx+1]['entity_group'] != 'SOFT':
-                    versions.append(entities[idx+1])
-                    idx += 1
-
-            results.append({'software': software, 'versions': versions})
-
-            idx += 1
-
-        results = self._remove_duplicate_entity(results)
 
         return results
 
