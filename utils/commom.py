@@ -46,6 +46,7 @@ def init_logger(log_file=None, log_file_level=logging.NOTSET):
         logger.addHandler(file_handler)
     return logger
 
+
 def seed_everything(seed=1029):
     '''
     设置整个开发环境的seed
@@ -62,6 +63,7 @@ def seed_everything(seed=1029):
     # some cudnn methods can be random even after fixing the seed
     # unless you tell it to be deterministic
     torch.backends.cudnn.deterministic = True
+
 
 def get_parser():
     parser = argparse.ArgumentParser('NLP model parameter setting.')
@@ -99,7 +101,7 @@ def get_parser():
     parser.add_argument('--learning_rate', default=5e-5, type=float,
                         help='Default learning rate for model training.')
     parser.add_argument("--adam_epsilon", default=1e-8, type=float,
-                        help="Epsilon for Adam optimizer.")  
+                        help="Epsilon for Adam optimizer.")
     parser.add_argument("--weight_decay", default=0.01, type=float,
                         help="Weight decay if we apply some.")
     parser.add_argument('--crf_learning_rate', default=1e-3, type=float,
@@ -110,7 +112,7 @@ def get_parser():
                         help="Log checkpoint every X updates steps")
     parser.add_argument('--save_step', default=-1, type=int,
                         help="Save checkpoint every X updates steps")
-    parser.add_argument('--eval_step', default=1000, type=int,
+    parser.add_argument('--eval_step', default=1, type=int,
                         help="Save checkpoint every X updates steps")
     parser.add_argument('--loss_type', default='ce', type=str,
                         help="loss function type ('lsr', 'focal', 'ce')")
@@ -122,7 +124,10 @@ def get_parser():
                         help="If > 0: set total number of training steps to perform. Override num_train_epochs.", )
     parser.add_argument("--reduction", default="token_mean", type=str,
                         help="CRF reduction ['sum','mean','token_mean']", )
-    parser.add_argument("--seed", type=int, default=42, help="random seed for initialization")
+    parser.add_argument("--seed", type=int, default=42,
+                        help="random seed for initialization")
+    parser.add_argument('--kpi', default='precision',
+                        help="focus metrics [precision,f1,recall,accuracy]")
 
     # runing mode
     parser.add_argument('--do_train', default=True, action='store_true',
