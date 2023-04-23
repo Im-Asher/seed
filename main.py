@@ -21,7 +21,9 @@ from seqeval.scheme import IOB2
 from utils.commom import get_parser, seed_everything
 from torch.optim.lr_scheduler import LambdaLR
 
-max_precision = 0
+max_metrics = 0
+
+metrics = {"f1": 0, "precision": 1, "recall": 2}
 
 logger = logging.getLogger(__name__)
 
@@ -57,13 +59,14 @@ def get_linear_schedule_with_warmup(optimizer, num_warmup_steps, num_training_st
     return LambdaLR(optimizer, lr_lambda, last_epoch)
 
 
-def train(args: argparse.Namespace, train_dataloader,eval_dataloader, model: BertForNer, tokenizer, config):
+def train(args: argparse.Namespace, train_dataloader, eval_dataloader, model: BertForNer, tokenizer, config):
     # optimizer = AdamW(model.parameters(), lr=args.learning_rate)
     # lr_scheduler = get_scheduler('linear', optimizer=optimizer,
     #                              num_warmup_steps=0, num_training_steps=args.num_training_steps)
     global_step = 0
     tr_loss = 0.0
-    global max_precision
+
+    global max_metrics
 
     if args.max_steps > 0:
         t_total = args.max_steps
@@ -159,9 +162,10 @@ def train(args: argparse.Namespace, train_dataloader,eval_dataloader, model: Ber
                     output_dir, "scheduler.pt"))
 
             if args.eval_step > 0 and global_step % args.eval_step == 0:
-                results = evaluate(args=args, eval_dataloader=eval_dataloader,config=config,model=model)
-                if max_precision < results[1]:
-                    max_precision = results[1]
+                results = evaluate(
+                    args=args, eval_dataloader=eval_dataloader, config=config, model=model)
+                if max_metrics < results[metrics[args.kpi]]:
+                    max_metrics = results[metrics[args.kpi]]
                     save_model(model, args)
                 model.train()
         logger.info("\n")
@@ -173,7 +177,7 @@ def train(args: argparse.Namespace, train_dataloader,eval_dataloader, model: Ber
     return global_step, tr_loss / global_step
 
 
-def evaluate(args, eval_dataloader,config,model: BertForNer):
+def evaluate(args, eval_dataloader, config, model: BertForNer):
     true_labels, true_predictions = [], []
 
     model.eval()
@@ -320,14 +324,15 @@ if __name__ == "__main__":
         train_dataset, batch_size=args.batch_size, shuffle=True, collate_fn=collate_fn)
     eval_dataloader = DataLoader(
         eval_dataset, batch_size=args.batch_size, shuffle=True, collate_fn=collate_fn)
-    
+
     if args.do_train:
         train(args=args, train_dataloader=train_dataloader, eval_dataloader=eval_dataloader,
               model=model, tokenizer=tokenizer, config=config)
-        results = evaluate(args=args,eval_dataloader=eval_dataloader, config=config, model=model)
+        results = evaluate(
+            args=args, eval_dataloader=eval_dataloader, config=config, model=model)
 
         # Save trained model/tokenizer/training parameters
-        if max_precision < results[1]:
+        if max_metrics < results[metrics[args.kpi]]:
             save_model(model, args)
 
     results = {}
@@ -341,7 +346,8 @@ if __name__ == "__main__":
             config = config_class.from_pretrained(checkpoint)
             model = model_class.from_pretrained(
                 checkpoint, config=config).to(args.device)
-            result = evaluate(args=args, eval_dataloader=eval_dataloader,config=config, model=model)
+            result = evaluate(
+                args=args, eval_dataloader=eval_dataloader, config=config, model=model)
             results.update({checkpoint: result})
         output_eval_results = os.path.join(args.output_dir, "eval_resutls.txt")
 
