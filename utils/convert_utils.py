@@ -8,7 +8,7 @@ class VersionConvert:
         if label == "VERL":
             return self.__convert_to_version_list(entity=entity)
         if label == "VERR":
-            return self.__convert_to_versing_range(entity=entity)
+            return self.__convert_to_version_range(entity=entity)
         
     def __convert_to_version_list(self,entity:str):
         version_intervals = [(match.group(), match.start(), match.end())
@@ -20,7 +20,7 @@ class VersionConvert:
 
         return versions
     
-    def __convert_to_versing_range(self,entity:str):
+    def __convert_to_version_range(self,entity:str):
         one_left = ['start', 'from', '>', '>=']
         one_right = ['prior', 'before', 'through',
                      'to', 'up', 'earlier', '<', '<=','below']
