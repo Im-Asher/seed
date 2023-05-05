@@ -1,10 +1,10 @@
 import re
 import torch
-import nltk
 import numpy as np
 
 from transformers import Pipeline
 from nltk.tokenize import sent_tokenize
+from utils.convert_utils import VersionConvert
 
 version_pattern = r'\d+\.\d+(?:\.\d+)?(?:\w+|-\w+)?|\d+'
 NOT_SHOW_LABELS = ['B-FVERL', 'I-FVERL', 'B-FVERR', 'I-FVERR', 'O']
@@ -12,6 +12,9 @@ VERSION_LABELS = ['VERR', 'VERL']
 
 
 class BertCrfPipeline(Pipeline):
+
+    version_convert = VersionConvert()
+
     def _sanitize_parameters(self, **kwargs):
         preprocess_kwargs, forward_kwargs, postprocess_kwargs = {}, {}, {}
 
@@ -77,7 +80,7 @@ class BertCrfPipeline(Pipeline):
                     score = np.mean(all_scores).item()
 
                     if label in VERSION_LABELS:
-                        word = self._convert_to_version_format(word, label)
+                        word = self.version_convert.convert(word, label)
 
                     if word!='[]':
                         pred_label.append({
@@ -126,81 +129,6 @@ class BertCrfPipeline(Pipeline):
                 {"vendor": vendor, "software": None, "versions": []})
 
         return results
-
-    def _convert_to_version_format(self, entity: str, label: str):
-        entity = entity.lower()
-
-        if label == 'VERL':
-            return self._convert_to_version_list(entity)
-        if label == 'VERR':
-            return self._convert_to_version_range(entity)
-
-    def _convert_to_version_list(self, entity: str):
-        version_intervals = [(match.group(), match.start(), match.end())
-                             for match in re.finditer(version_pattern, entity)]
-
-        versions = [v[0] for v in version_intervals]
-
-        versions = ','.join(versions)
-
-        return versions
-
-    def _convert_to_version_range(self, entity: str):
-        one_left = ['start', 'from', '>', '>=']
-        one_right = ['prior', 'before', 'through',
-                     'to', 'up', 'earlier', '<', '<=','below']
-
-        # special version convert to specific version (e.g 5.x->5.0)
-        special_char_pattern = r'[/:*x]'
-        special = re.compile(special_char_pattern, re.I)
-
-        version_intervals = [(match.group(), match.start(), match.end())
-                             for match in re.finditer(version_pattern, entity)]
-
-        versions = [special.sub('0', v[0]) for v in version_intervals]
-
-        versions = sorted(versions)
-
-        if len(versions) < 1:
-            s = entity.find('all')
-            if s != -1:
-                return f'(,)'
-            return f'()'
-
-        if len(versions) == 1:
-            for w in one_left:
-                s = entity.find(w)
-                if s != -1:
-                    return self._comfirm_the_boundary(entity, f"{versions[0]},", 1)
-
-            return self._comfirm_the_boundary(entity, f",{versions[0]}", 1)
-
-        if len(versions) == 2:
-            return self._comfirm_the_boundary(entity, f"{versions[0]},{versions[1]}", 2)
-
-        if len(versions) >= 3:
-            version_str = f"{versions[0]},{versions[-1]}"
-            return self._comfirm_the_boundary(entity, version_str, 3)
-
-    def _comfirm_the_boundary(self, entity: str, versions: str, versions_size: int):
-        including_key_word = ['include', 'includ', 'through', '=']
-        if versions_size < 1:
-            return versions
-        if versions_size == 1:
-            for w in including_key_word:
-                s = entity.find(w)
-                if s != -1:
-                    if versions.find(',') == 0:
-                        return f"({versions}]"
-                    else:
-                        return f"[{versions})"
-            return f"({versions})"
-        if versions_size > 1:
-            for w in including_key_word:
-                s = entity.find(w)
-                if s != -1:
-                    return f"[{versions}]"
-            return f"[{versions})"
 
     def __remove_duplicate(self, entities: list):
         results = []
