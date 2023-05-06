@@ -142,3 +142,9 @@ def get_parser():
                         action='store_true', help='Pretrained config check point')
 
     return parser
+
+
+def is_chinese(ch):
+    if '\u4e00' <= ch <= '\u9fff':
+        return True
+    return False
