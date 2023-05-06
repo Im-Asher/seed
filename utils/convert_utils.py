@@ -1,5 +1,4 @@
 import re
-from commom import is_chinese
 
 class VersionConvert:
     __version_pattern = r'\b\d+\.\d+(?:\.\d+)*(?:\w+|-\w+)?|\d+\b'
@@ -73,7 +72,13 @@ class VersionConvert:
                 if s != -1:
                     return f"[{versions}]"
             return f"[{versions})"
-        
+    
+    def __is_chinese(self,ch):
+        if '\u4e00' <= ch <= '\u9fff':
+            return True
+        return False
+
+
     def __preprocess(self,entity:str)->str:
 
         # special version convert to specific version (e.g 5.x->5.0)
@@ -84,7 +89,7 @@ class VersionConvert:
         # remove chinese char
         chinese_words = []
         for ch in entity:
-            if is_chinese(ch):
+            if self.__is_chinese(ch):
                 chinese_words.append(ch)
         
         for word in chinese_words:
