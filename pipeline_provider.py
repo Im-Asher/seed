@@ -4,7 +4,7 @@ import numpy as np
 
 from transformers import Pipeline
 from nltk.tokenize import sent_tokenize
-from utils.convert_utils import VersionConvert
+from utils.convert_utils import VersionConvert,LangConvert
 
 version_pattern = r'\d+\.\d+(?:\.\d+)?(?:\w+|-\w+)?|\d+'
 NOT_SHOW_LABELS = ['B-FVERL', 'I-FVERL', 'B-FVERR', 'I-FVERR', 'O']
@@ -14,6 +14,7 @@ VERSION_LABELS = ['VERR', 'VERL']
 class BertCrfPipeline(Pipeline):
 
     version_convert = VersionConvert()
+    lang_convert = LangConvert()
 
     def _sanitize_parameters(self, **kwargs):
         preprocess_kwargs, forward_kwargs, postprocess_kwargs = {}, {}, {}
@@ -56,7 +57,7 @@ class BertCrfPipeline(Pipeline):
     def postprocess(self, model_outputs):
         # decode -> BIO
         # output -> {entity\label\start\end}
-        output,  sentences, sent_text, offsets, probabilities = model_outputs
+        output,  sentence, sent_text, offsets, probabilities = model_outputs
 
         pred_label = []
         for s_idx, sent in enumerate(output):
@@ -82,16 +83,17 @@ class BertCrfPipeline(Pipeline):
                     if label in VERSION_LABELS:
                         word = self.version_convert.convert(word, label)
 
-                    if word!='[]':
+                    if word != '[]':
                         pred_label.append({
                             "entity_group": label,
                             "word": word,
                             "score": score,
                         })
-
                 idx += 1
         results = self.__combine(pred_label)
-        results= self.__remove_duplicate(results)
+        results = self.__remove_duplicate(results)
+        langs = self.lang_convert.convert(sentence=sentence)
+        results = self.__insert_langs(results,langs)
         return results
 
     def __combine(self, entities: list):
@@ -99,7 +101,7 @@ class BertCrfPipeline(Pipeline):
         idx = 0
         entities_size = len(entities)
         vendor = None
-        
+
         while idx < entities_size:
             software = None
             versions = []
@@ -118,9 +120,9 @@ class BertCrfPipeline(Pipeline):
                 while idx + 1 < entities_size and entities[idx+1]["entity_group"] in VERSION_LABELS:
                     versions.append(entities[idx+1])
                     idx += 1
-            
+
             idx += 1
-            
+
             results.append(
                 {"vendor": vendor, "software": software, "versions": versions})
 
@@ -166,3 +168,8 @@ class BertCrfPipeline(Pipeline):
             idx += 1
 
         return results
+
+    def __insert_langs(self,entities:list,langs:list):
+        for entity in entities :
+            entity["language"] = langs
+        return entities
