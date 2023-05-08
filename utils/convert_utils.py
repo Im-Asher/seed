@@ -1,10 +1,10 @@
 import re
-from commom import is_chinese
+
 
 class VersionConvert:
     __version_pattern = r'\b\d+\.\d+(?:\.\d+)*(?:\w+|-\w+)?|\d+\b'
 
-    def convert(self,entity:str,label:str):
+    def convert(self, entity: str, label: str):
         entity = entity.lower()
 
         entity = self.__preprocess(entity)
@@ -13,8 +13,8 @@ class VersionConvert:
             return self.__convert_to_version_list(entity=entity)
         if label == "VERR":
             return self.__convert_to_version_range(entity=entity)
-        
-    def __convert_to_version_list(self,entity:str):
+
+    def __convert_to_version_list(self, entity: str):
         version_intervals = [(match.group(), match.start(), match.end())
                              for match in re.finditer(self.__version_pattern, entity)]
 
@@ -23,13 +23,14 @@ class VersionConvert:
         versions = ','.join(versions)
 
         return versions
-    
-    def __convert_to_version_range(self,entity:str):
+
+    def __convert_to_version_range(self, entity: str):
         one_left = ['start', 'from', '>', '>=']
         one_right = ['prior', 'before', 'through',
-                     'to', 'up', 'earlier', '<', '<=','below']
+                     'to', 'up', 'earlier', '<', '<=', 'below']
 
-        versions = [match.group() for match in re.finditer(self.__version_pattern, entity)]
+        versions = [match.group()
+                    for match in re.finditer(self.__version_pattern, entity)]
 
         versions = sorted(versions)
 
@@ -73,25 +74,62 @@ class VersionConvert:
                 if s != -1:
                     return f"[{versions}]"
             return f"[{versions})"
-        
-    def __preprocess(self,entity:str)->str:
+
+    def __is_chinese(self, ch):
+        if '\u4e00' <= ch <= '\u9fff':
+            return True
+        return False
+
+    def __preprocess(self, entity: str) -> str:
 
         # special version convert to specific version (e.g 5.x->5.0)
         special_char_pattern = r'[/:*x]'
         special = re.compile(special_char_pattern, re.I)
-        entity = special.sub('0',entity)
+        entity = special.sub('0', entity)
 
         # remove chinese char
         chinese_words = []
         for ch in entity:
-            if is_chinese(ch):
+            if self.__is_chinese(ch):
                 chinese_words.append(ch)
-        
+
         for word in chinese_words:
-            entity = entity.replace(word," ")
+            entity = entity.replace(word, " ")
         return entity
 
-if __name__=="__main__":
-    vc =  VersionConvert()
-    s = vc.convert("2.1和3.2","VERR")
-    print(s)
+
+class LangConvert:
+    def convert(self, sentence: str):
+        language = self.__find_file(sentence=sentence)
+        language.extend(self.__find_language(sentence=sentence))
+        return list(set(language))
+
+    def __find_file(self, sentence: str) -> list:
+        # define suffix to language map
+        file_suffix_to_language = {
+            ".c": "c",
+            ".cpp": "c++",
+            ".java": "java",
+            ".py": "python",
+            ".js": "javascript",
+            ".go": "go",
+            ".php": "php"
+        }
+        # define pattern
+        file_pattern = r'\b\w+\.(c|java|go|py|cpp|js|php)\b'
+
+        files = [match.group()
+                 for match in re.finditer(file_pattern, sentence)]
+
+        language = []
+        for s in file_suffix_to_language:
+            for file in files:
+                if s in file:
+                    language.append(file_suffix_to_language[s])
+        return language
+
+    def __find_language(self, sentence: str):
+        language_pattern = r"\b(c\+{2}|c|python|javascript|go|java|php)\b"
+        language = [match.group()
+                    for match in re.finditer(language_pattern, sentence, re.I)]
+        return language
