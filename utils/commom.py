@@ -22,7 +22,7 @@ PREDICT_RESULT_DIR = OUTPUT_DIR+'predict_result.json'
 
 logger = logging.getLogger()
 
-MODEL_TYPE = 'bert-crf'
+MODEL_TYPE = 'roberta-crf'
 BASE_MODEL_NAME_DICT = {'bert-crf': 'bert-base-uncased','roberta-crf':'xlm-roberta-base'}
 
 def init_logger(log_file=None, log_file_level=logging.NOTSET):
