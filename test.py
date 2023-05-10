@@ -5,7 +5,7 @@ for runner in svc.runners:
 
 request = {
     "task":"sv",
-    "samples":["sockethandler.cpp in HTTP Antivirus Proxy (HAVP) 0.88 allows remote attackers to cause a denial of service (hang) by connecting to a non-responsive server, which triggers an infinite loop due to an uninitialized variable. c++"]
+    "samples":["GitLab EE 11.3 through 13.1.2 has Incorrect Access Control because of the Maven package upload endpoint."]
 }
 
 result = svc.apis["extract"].func(request)

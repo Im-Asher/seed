@@ -1,4 +1,5 @@
 import re
+from utils.constant_enum import LanguageEnum
 
 
 class VersionConvert:
@@ -99,37 +100,87 @@ class VersionConvert:
 
 
 class LangConvert:
+
     def convert(self, sentence: str):
+        sentence = sentence.lower()
         language = self.__find_file(sentence=sentence)
         language.extend(self.__find_language(sentence=sentence))
+        language.extend(
+            self.__find_package_management_system(sentence=sentence))
         return list(set(language))
 
     def __find_file(self, sentence: str) -> list:
         # define suffix to language map
-        file_suffix_to_language = {
-            ".c": "c",
-            ".cpp": "c++",
-            ".java": "java",
-            ".py": "python",
-            ".js": "javascript",
-            ".go": "go",
-            ".php": "php"
+        file_suffix_to_language_dict = {
+            ".c": LanguageEnum.CPP.value,
+            ".cpp": LanguageEnum.CPP.value,
+            ".java": LanguageEnum.JAVA.value,
+            ".py": LanguageEnum.PYTHON.value,
+            ".js": LanguageEnum.JS.value,
+            ".go": LanguageEnum.GO.value,
+            ".php": LanguageEnum.PHP.value,
+            ".rb": LanguageEnum.RUBY.value,
+            ".rs": LanguageEnum.RUST.value,
         }
         # define pattern
-        file_pattern = r'\b\w+\.(c|java|go|py|cpp|js|php)\b'
+        file_pattern = r'\b\w+\.(c|java|go|py|cpp|js|php|rs|rb)\b'
 
         files = [match.group()
                  for match in re.finditer(file_pattern, sentence)]
 
         language = []
-        for s in file_suffix_to_language:
+        for s in file_suffix_to_language_dict:
             for file in files:
                 if s in file:
-                    language.append(file_suffix_to_language[s])
+                    language.append(file_suffix_to_language_dict[s])
         return language
 
     def __find_language(self, sentence: str):
-        language_pattern = r"\b(c\+{2}|c|python|javascript|go|java|php)\b"
-        language = [match.group()
-                    for match in re.finditer(language_pattern, sentence, re.I)]
+        language_pattern = r"\b(c\+{2}|c|python|javascript|golang|java|php|ruby|rust)\b"
+
+        language_dict = {
+            "python": LanguageEnum.PYTHON.value,
+            "golang": LanguageEnum.GO.value,
+            "c": LanguageEnum.CPP.value,
+            "c++": LanguageEnum.CPP.value,
+            "c/c++": LanguageEnum.CPP.value,
+            "ruby": LanguageEnum.RUBY.value,
+            "rust": LanguageEnum.RUST.value,
+            "php": LanguageEnum.PHP.value,
+            "javascript": LanguageEnum.JS.value,
+            "java": LanguageEnum.JAVA.value,
+        }
+
+        language_from_sentence = [match.group()
+                                  for match in re.finditer(language_pattern, sentence, re.I)]
+
+        language = [language_dict[lang]
+                    for lang in language_from_sentence if lang in language_dict.keys()]
+
+        return language
+
+    def __find_package_management_system(self, sentence: str):
+
+        package_pattern = r"\b(maven|pypi|pip|npm|conan|crates.io|rubygems|gem|packagist|composer|nuget)\b"
+
+        package_management_system_dict = {
+            "maven": LanguageEnum.JAVA.value,
+            "pypi": LanguageEnum.PYTHON.value,
+            "pip": LanguageEnum.PYTHON.value,
+            "npm": LanguageEnum.JS.value,
+            "conan": LanguageEnum.CPP.value,
+            "crates.io": LanguageEnum.RUST.value,
+            "rubygems": LanguageEnum.RUBY.value,
+            "gem": LanguageEnum.RUBY.value,
+            "packagist": LanguageEnum.PHP.value,
+            "composer": LanguageEnum.PHP.value,
+            "nuget": LanguageEnum.NET.value,
+        }
+
+        package_from_sentence = [match.group()
+                                 for match in re.finditer(package_pattern, sentence, re.I)]
+
+        language = [package_management_system_dict[p]
+                    for p in package_from_sentence if p in package_management_system_dict.keys()]
+
         return language
