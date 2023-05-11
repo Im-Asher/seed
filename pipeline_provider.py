@@ -1,10 +1,10 @@
-import re
+import sys
 import torch
 import numpy as np
 
 from transformers import Pipeline
 from nltk.tokenize import sent_tokenize
-from utils.convert_utils import VersionConvert,LangConvert
+from utils.convert_utils import VersionConvert, LangConvert
 
 version_pattern = r'\d+\.\d+(?:\.\d+)?(?:\w+|-\w+)?|\d+'
 NOT_SHOW_LABELS = ['B-FVERL', 'I-FVERL', 'B-FVERR', 'I-FVERR', 'O']
@@ -80,9 +80,6 @@ class BertCrfPipeline(Pipeline):
                     word = sent_text[s_idx][start:end]
                     score = np.mean(all_scores).item()
 
-                    if label in VERSION_LABELS:
-                        word = self.version_convert.convert(word, label)
-
                     if word != '[]':
                         pred_label.append({
                             "entity_group": label,
@@ -90,10 +87,11 @@ class BertCrfPipeline(Pipeline):
                             "score": score,
                         })
                 idx += 1
-        results = self.__combine(pred_label)
+        results = self.__combine_entity(pred_label,sentence=sentence)
         results = self.__remove_duplicate(results)
         langs = self.lang_convert.convert(sentence=sentence)
-        results = self.__insert_langs(results,langs)
+        results = self.__insert_langs(results, langs)
+        results = self.__version_convert(results)
         return results
 
     def __combine(self, entities: list):
@@ -169,7 +167,69 @@ class BertCrfPipeline(Pipeline):
 
         return results
 
-    def __insert_langs(self,entities:list,langs:list):
-        for entity in entities :
+    def __insert_langs(self, entities: list, langs: list):
+        for entity in entities:
             entity["language"] = langs
         return entities
+
+    def __combine_entity(self, entities: list, sentence: str):
+        results = []
+        idx = 0
+        entities_size = len(entities)
+        vendor = None
+
+        while idx < entities_size:
+
+            software = None
+            versions = []
+
+            if entities[idx]["entity_group"] == "VENDOR":
+                vendor = entities[idx]
+                idx += 1
+                continue
+            if entities[idx]["entity_group"] == "SOFT":
+                software = entities[idx]
+                while idx+1 < entities_size and entities[idx+1]["entity_group"] in VERSION_LABELS:
+                    versions.append(entities[idx+1])
+                    idx += 1
+            elif entities[idx]["entity_group"] in VERSION_LABELS:
+                versions.append(entities[idx])
+                while idx + 1 < entities_size and entities[idx+1]["entity_group"] in VERSION_LABELS:
+                    versions.append(entities[idx+1])
+                    idx += 1
+                software = self.__find_software(
+                    entities, entities[idx]["word"], sentence)
+
+            idx += 1
+            results.append(
+                {"vendor": vendor, "software": software, "versions": versions})
+
+        if len(results) <= 0 and vendor:
+            results.append(
+                {"vendor": vendor, "software": None, "versions": []})
+        return results
+
+    def __find_software(self, entities: list, version: str, sentence: str):
+        software = None
+        min_distance = sys.maxsize
+
+        for entity in entities:
+            if entity["entity_group"] == "SOFT":
+                distance = self.__compute_entity_distance(
+                    entity=version, target=entity["word"], sentence=sentence)
+                if distance < min_distance:
+                    min_distance = distance
+                    software = entity
+        return software
+
+    def __compute_entity_distance(self, entity: str, target: str, sentence: str):
+        from_index = sentence.index(entity)
+        to_index = sentence.index(target)
+        return abs(from_index-to_index)
+
+    def __version_convert(self,results:list):
+        for item in results:
+            versions = item['versions']
+            for version in versions:
+                version["word"] = self.version_convert.convert(version["word"],version["entity_group"])
+        return results
