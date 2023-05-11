@@ -5,7 +5,7 @@ for runner in svc.runners:
 
 request = {
     "task":"sv",
-    "samples":["versions 1.3.0 to 1.7.7 are vulnerable against stored XSS via the “Web Page” element, that allows the injection of malicious JavaScript into the 'URL' field. This issue affects: nasa openmct 1.7.7 version and prior versions; 1.3.0 version and later versions."]
+    "samples":["OpenHarmony-v3.1.2 and prior versions have a heap overflow vulnerability. Local attackers can trigger a heap overflow and get network sensitive information."]
 }
 
 result = svc.apis["extract"].func(request)

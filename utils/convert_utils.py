@@ -3,7 +3,7 @@ from utils.constant_enum import LanguageEnum
 
 
 class VersionConvert:
-    __version_pattern = r'\b\d+\.\d+(?:\.\d+)*(?:\w+|-\w+)?|\d+\b'
+    __version_pattern = r'\b[vV]\d+\.\d+(?:\.\d+)*(?:\w+|-\w+)?|\d+\b'
 
     def convert(self, entity: str, label: str):
         entity = entity.lower()
