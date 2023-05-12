@@ -5,7 +5,7 @@ for runner in svc.runners:
 
 request = {
     "task":"sv",
-    "samples":["GitLab EE 11.3 through 13.1.2 has Incorrect Access Control because of the Maven package upload endpoint."]
+    "samples":["OpenHarmony-v3.1.2 and prior versions have a heap overflow vulnerability. Local attackers can trigger a heap overflow and get network sensitive information."]
 }
 
 result = svc.apis["extract"].func(request)

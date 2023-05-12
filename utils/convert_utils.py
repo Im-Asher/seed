@@ -3,7 +3,7 @@ from utils.constant_enum import LanguageEnum
 
 
 class VersionConvert:
-    __version_pattern = r'\b\d+\.\d+(?:\.\d+)*(?:\w+|-\w+)?|\d+\b'
+    __version_pattern = r'\b[vV]*\d+[-.]\d+(?:[-.]\d+)*(?:\w+|[-.]\w+)?|\d+\b'
 
     def convert(self, entity: str, label: str):
         entity = entity.lower()
@@ -57,7 +57,7 @@ class VersionConvert:
             return self.__comfirm_the_boundary(entity, version_str, 3)
 
     def __comfirm_the_boundary(self, entity: str, versions: str, versions_size: int):
-        including_key_word = ['include', 'includ', 'through', '=']
+        including_key_word = ['include', 'includ', 'through', '=',"and prior"]
         if versions_size < 1:
             return versions
         if versions_size == 1:

@@ -22,6 +22,8 @@ PREDICT_RESULT_DIR = OUTPUT_DIR+'predict_result.json'
 
 logger = logging.getLogger()
 
+MODEL_TYPE = 'roberta-crf'
+BASE_MODEL_NAME_DICT = {'bert-crf': 'bert-base-uncased','roberta-crf':'xlm-roberta-base'}
 
 def init_logger(log_file=None, log_file_level=logging.NOTSET):
     '''
@@ -73,7 +75,7 @@ def get_parser():
                         type=str, help='The input data dir.')
     parser.add_argument('--task_name', default=TASK_NAME,
                         type=str,  help='Execute task name using model')
-    parser.add_argument('--name_or_path', default=CHECK_POINT, type=str,
+    parser.add_argument('--name_or_path', default=BASE_MODEL_NAME_DICT.get(MODEL_TYPE), type=str,
                         help='The name of pre-traind model name or path in local')
     parser.add_argument('--train_file', default=TRAIN_FILE,
                         type=str,  help='Train file for model training')
@@ -83,7 +85,7 @@ def get_parser():
                         type=str,  help='Predict file for model predict')
     parser.add_argument('--labels_file', default=LABELS_FILE,
                         type=str,  help='labels file for model to identify entity')
-    parser.add_argument('--model_type', default="bert-crf",
+    parser.add_argument('--model_type', default=MODEL_TYPE,
                         type=str,  help="Please select model type!")
     parser.add_argument('--output_dir', default=OUTPUT_DIR, type=str,
                         help='The output directory where the model trained will be written ')

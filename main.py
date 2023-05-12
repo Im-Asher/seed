@@ -13,7 +13,7 @@ from utils.commom import init_logger, logger
 from torch.utils.data import DataLoader, random_split
 from data.data_utils import collate_fn, load_data, load_labels
 from data.data_provider import CveDataset
-from model_provider import BertForNer, BertCrfForNer, BertMlpForNer
+from model_provider import BertForNer, BertCrfForNer, BertMlpForNer,RobertaCrfConfig,RobertaCrfForNer
 from config_provider import BertCrfConfig
 from transformers import AutoConfig, AutoTokenizer, AdamW, get_scheduler
 from seqeval.metrics import classification_report, f1_score, accuracy_score, precision_score, recall_score
@@ -32,7 +32,7 @@ os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:128"
 MODEL_CLASS = {
     'bert': (AutoConfig, BertForNer, AutoTokenizer),
     'bert-crf': (BertCrfConfig, BertCrfForNer, AutoTokenizer),
-    'bert-mlp': (AutoConfig, BertMlpForNer, AutoTokenizer)
+    'roberta-crf': (RobertaCrfConfig, RobertaCrfForNer, AutoTokenizer)
 }
 
 

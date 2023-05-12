@@ -1,8 +1,8 @@
 import torch
 from typing import Optional
-from config_provider import BertCrfConfig
+from config_provider import BertCrfConfig,RobertaCrfConfig
 from torch import nn
-from transformers import BertPreTrainedModel, BertModel, BertForTokenClassification
+from transformers import BertPreTrainedModel, BertModel, BertForTokenClassification,RobertaPreTrainedModel,RobertaModel
 from torch.nn import CrossEntropyLoss
 from losses.focal_loss import FocalLoss
 from losses.label_smoothing import LabelSmoothingCrossEntropy
@@ -66,6 +66,36 @@ class BertCrfForNer(BertPreTrainedModel):
         super(BertCrfForNer, self).__init__(config)
         self.num_labels = config.num_labels
         self.bert = BertModel(config)
+        self.dropout = nn.Dropout(config.hidden_dropout_prob)
+        self.classifier = nn.Linear(config.hidden_size, config.num_labels)
+        self.crf = CRF(num_tags=config.num_labels, batch_first=True)
+        self.reduction = config.reduction
+        self.init_weights()
+
+    def forward(self, input_ids: Optional[torch.Tensor] = None,
+                attention_mask: Optional[torch.Tensor] = None,
+                token_type_ids: Optional[torch.Tensor] = None,
+                labels=None):
+        outputs = self.bert(input_ids, attention_mask, token_type_ids)
+        sequence_output = outputs.last_hidden_state
+        sequence_output = self.dropout(sequence_output)
+        logits = self.classifier(sequence_output)
+        outputs = (logits,)
+        if labels is not None:
+            active_mask = torch.tensor(
+                attention_mask, dtype=torch.uint8)
+            loss = self.crf(emissions=logits, tags=labels,
+                            mask=active_mask, reduction=self.reduction)
+            outputs = (-1 * loss,) + outputs
+        return outputs
+
+class RobertaCrfForNer(RobertaPreTrainedModel):
+    config_class = RobertaCrfConfig
+
+    def __init__(self, config) -> None:
+        super(RobertaCrfForNer, self).__init__(config)
+        self.num_labels = config.num_labels
+        self.bert = RobertaModel(config)
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
         self.classifier = nn.Linear(config.hidden_size, config.num_labels)
         self.crf = CRF(num_tags=config.num_labels, batch_first=True)
