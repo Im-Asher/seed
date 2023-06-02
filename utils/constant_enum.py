@@ -11,3 +11,8 @@ class LanguageEnum(Enum):
     RUST="Rust"
     RUBY="Ruby"
     NET=".NET"
+
+class ResponseCode(Enum):
+    Fail = 0
+    Success = 1
+    Exception = 4

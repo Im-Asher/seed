@@ -18,10 +18,10 @@ class VersionConvert:
     def __convert_to_version_list(self, entity: str):
         version_intervals = [(match.group(), match.start(), match.end())
                              for match in re.finditer(self.__version_pattern, entity)]
-
-        versions = [v[0] for v in version_intervals]
-
-        versions = ','.join(versions)
+        versions = None
+        if len(version_intervals) > 0:
+            versions = [v[0] for v in version_intervals]
+            versions = ','.join(versions)
 
         return versions
 
@@ -39,7 +39,7 @@ class VersionConvert:
             s = entity.find('all')
             if s != -1:
                 return f'(,)'
-            return f'()'
+            return None
 
         if len(versions) == 1:
             for w in one_left:
@@ -57,7 +57,7 @@ class VersionConvert:
             return self.__comfirm_the_boundary(entity, version_str, 3)
 
     def __comfirm_the_boundary(self, entity: str, versions: str, versions_size: int):
-        including_key_word = ['include', 'includ', 'through', '=',"and prior"]
+        including_key_word = ['include', 'includ', 'through', '=', "and prior"]
         if versions_size < 1:
             return versions
         if versions_size == 1:
@@ -129,10 +129,11 @@ class LangConvert:
                  for match in re.finditer(file_pattern, sentence)]
 
         language = []
-        for s in file_suffix_to_language_dict:
-            for file in files:
-                if s in file:
-                    language.append(file_suffix_to_language_dict[s])
+        if len(files) > 0:
+            for s in file_suffix_to_language_dict:
+                for file in files:
+                    if s in file:
+                        language.append(file_suffix_to_language_dict[s])
         return language
 
     def __find_language(self, sentence: str):
