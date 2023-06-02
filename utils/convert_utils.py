@@ -137,7 +137,7 @@ class LangConvert:
         return language
 
     def __find_language(self, sentence: str):
-        language_pattern = r"\b(c\+{2}|c|python|javascript|golang|java|php|ruby|rust)\b"
+        language_pattern = r"\s(c\+{2}|c|python|javascript|golang|java|php|ruby|rust)\s"
 
         language_dict = {
             "python": LanguageEnum.PYTHON.value,
@@ -154,9 +154,11 @@ class LangConvert:
 
         language_from_sentence = [match.group()
                                   for match in re.finditer(language_pattern, sentence, re.I)]
-
-        language = [language_dict[lang]
-                    for lang in language_from_sentence if lang in language_dict.keys()]
+        language = []
+        
+        if len(language_from_sentence)>0:
+            language = [language_dict[lang]
+                        for lang in language_from_sentence if lang in language_dict.keys()]
 
         return language
 
@@ -180,8 +182,10 @@ class LangConvert:
 
         package_from_sentence = [match.group()
                                  for match in re.finditer(package_pattern, sentence, re.I)]
+        language = []
 
-        language = [package_management_system_dict[p]
-                    for p in package_from_sentence if p in package_management_system_dict.keys()]
-
+        if len(package_from_sentence)>0:
+            language = [package_management_system_dict[p]
+                        for p in package_from_sentence if p in package_management_system_dict.keys()]
+            
         return language
