@@ -230,6 +230,11 @@ class BertCrfPipeline(Pipeline):
     def __version_convert(self,results:list):
         for item in results:
             versions = item['versions']
+            converted_versions = []
             for version in versions:
-                version["word"] = self.version_convert.convert(version["word"],version["entity_group"])
+                converted_version = self.version_convert.convert(version["word"],version["entity_group"])
+                if converted_version:
+                    version["word"] = converted_version
+                    converted_versions.append(version)
+            item["versions"] = converted_versions
         return results
